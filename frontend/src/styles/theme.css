@@ -1,0 +1,101 @@
+:root {
+  /* Font stacks — overridden at runtime by applyTheme */
+  --font-display: ui-monospace, monospace;
+  --font-body: ui-monospace, monospace;
+  --font-mono: ui-monospace, monospace;
+
+  /* Rectangles share one squarish radius across all themes. */
+  --radius: 0.125rem;
+  --radius-round: 50%;
+  /* full circle — matches the classification-badge discs */
+
+  /* Typography scale — 6-step global ramp, not per-theme or per-mode.
+     Adjacent legacy sizes snap to the nearest step (minor drift accepted). */
+  --text-xs: 0.75rem;
+  /* small meta */
+  --text-sm: 0.8125rem;
+  --text-base: 0.9rem;
+  /* body — dominant UI text */
+  --text-lg: 1.125rem;
+  /* section headings / larger labels */
+  --text-xl: 1.6875rem;
+  /* big headings */
+  --text-2xl: 2.25rem;
+
+  /* Spacing scale — 7-step global ramp. These tokens are for padding, margin,
+     and gap only. */
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+
+  /* Modal and dense-trace geometry. */
+  --stroke-width: 0.0625rem;
+  --modal-max-width: 56rem;
+  --modal-max-height: 88dvh;
+  --modal-backdrop-weight: 72%;
+  --trace-check-columns: minmax(9rem, 1fr) 5rem 6rem 7rem 4rem 4rem;
+  --trace-table-min-width: 40rem;
+  --control-compact-height: 1.75rem;
+
+  /* Shadow scale — transparent-black, mode-agnostic */
+  --shadow-xs: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 0.25rem 1rem rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 0.25rem 1rem rgba(0, 0, 0, 0.15);
+
+  /* Eval bar label colors — text over the bar fills; inverse of the fill. */
+  --eval-bar-label-white: #1a1a1a;
+  --eval-bar-label-black: #ffffff;
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 320ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Move classification colors — semantic, identical across skins */
+  --review-book: #5d6d7e;
+  --review-forced: #7d7d7d;
+  --review-brilliant: #7048e8;
+  --review-great: #3a62d0;
+  --review-best: #2e8b57;
+  --review-excellent: #5a8f6e;
+  --review-good: #6f8a7a;
+  --review-inaccuracy: #b8860b;
+  --review-mistake: #d1541c;
+  --review-blunder: #c62828;
+  --review-miss: #b3266f;
+}
+
+@keyframes pulse-coral {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.45;
+    transform: scale(0.7);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  background: var(--bg);
+  color: var(--text);
+}

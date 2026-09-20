@@ -1,0 +1,57 @@
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Python cache and artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Local deploy script (machine-specific Pi target)
+deploy.sh
+
+# mkcert-generated local HTTPS cert/key (machine-specific, private key inside)
+certs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# SQLite durable review store (prod) + WAL sidecars
+*.db
+*.db-wal
+*.db-shm
+backend/data/
+
+.worktrees/
+
+# CLAUDE.md is now a symlink to AGENTS.md (the tracked file)
+CLAUDE.md
+.claude
+.codex
+
+# private overlay (symlinked in from the lab repo; no trailing slash so the
+# symlink itself is ignored, not only a directory)
+/backend/lab
+/backend/tests/calibration
+/frontend/src/private
+/e2e/specs/private
+/e2e/private

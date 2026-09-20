@@ -1,0 +1,61 @@
+# Production-parity overlay (local sim + real deploy). Layer on top of the
+# base compose:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+# Frontend nginx is the single public entrypoint (TLS + /api routing + rate
+# limiting); the backend is reached only over the compose network, never
+# published to the host.
+services:
+  backend:
+    ports: !reset []
+    restart: unless-stopped
+    environment:
+      # Durable review store: SqlStore over a SQLite file on a named volume, so
+      # reviews survive container recreation / redeploy. DATABASE_URL uses an
+      # absolute path (4 slashes) at the volume mount point.
+      APP_ENV: prod
+      DATABASE_URL: sqlite:////data/reviews.db
+    volumes:
+      - review-data:/data
+    # Default sized to the Oracle A1 Always Free target slice (4 OCPU / 24
+    # GB): 3 cores leaves 1 for frontend nginx + OS. Override
+    # BACKEND_CPU_LIMIT/BACKEND_MEM_LIMIT for a smaller box (e.g. a 2-CPU
+    # Docker Desktop VM can't satisfy 3.0). Memory capped tight enough that a runaway review
+    # pool (default 4 engines x 128 MB hash ~ 512 MB transient, plus baseline
+    # process RSS) would plausibly trip it — the point is to *see* graceful
+    # behavior (or tune the pool knobs) here, not to comfortably clear it
+    # with headroom to spare.
+    deploy:
+      resources:
+        limits:
+          cpus: "${BACKEND_CPU_LIMIT:-3.0}"
+          memory: ${BACKEND_MEM_LIMIT:-768M}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      args:
+        VITE_API_BASE: /api
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Local sim: point CERTS_DIR at the mkcert output (see Phase 3 of the
+    # local-parity-sim spec); the two files must be named cert.pem/key.pem
+    # regardless of source, matching nginx.conf's fixed mount path.
+    volumes:
+      - ${CERTS_DIR:-../certs}:/etc/nginx/certs:ro
+    # Host 80/443 → container 8080/8443 (unprivileged nginx, uid 101). Public
+    # entrypoint is unchanged; only the in-container ports moved.
+    ports:
+      - "80:8080"
+      - "443:8443"
+
+volumes:
+  # Durable SQLite review store — survives `up --force-recreate` / redeploy.
+  review-data:

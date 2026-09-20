@@ -1,0 +1,24 @@
+{
+  "name": "chessreview-e2e",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@4.9.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "e2e": "NODE_OPTIONS=--preserve-symlinks playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:install": "playwright install chromium",
+    "shots": "NODE_OPTIONS=--preserve-symlinks playwright test --config playwright.shots.config.ts",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
+    "eslint": "^10.3.0",
+    "globals": "^17.6.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "comment": "Rem-only length guard. All CSS length values use rem or viewport-relative units; raw px values are forbidden, including custom properties.",
+  "rules": {
+    "declaration-property-value-disallowed-list": {
+      "/.*/": ["/[0-9]+(?:\\.[0-9]+)?px/"]
+    }
+  }
+}

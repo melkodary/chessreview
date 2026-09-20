@@ -1,0 +1,76 @@
+.bar {
+  width: var(--eval-bar-width);
+  /* Height comes from the board row (align-items: stretch) so the bar always
+     matches the board's height without a JS-measured length prop. */
+  align-self: stretch;
+  background: var(--eval-bar-bg);
+  border-radius: var(--radius);
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: opacity 0.2s ease;
+}
+
+/* Held value from a position the board has left. 0.45 matches MoveList's
+   .dimmed, the existing "shown but not current" treatment. */
+.stale {
+  opacity: 0.45;
+}
+
+.top,
+.bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  transition: height 0.3s ease;
+}
+
+.top {
+  top: 0;
+}
+
+.bottom {
+  bottom: 0;
+}
+
+.colorBlack {
+  background: var(--eval-bar-black);
+}
+
+.colorWhite {
+  background: var(--eval-bar-white);
+}
+
+.label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-base);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  letter-spacing: -0.0125rem;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+
+.labelPosBottom {
+  bottom: 0.375rem;
+}
+
+.labelPosTop {
+  top: 0.375rem;
+}
+
+.labelColorWhite {
+  color: var(--eval-bar-label-white);
+}
+
+.labelColorBlack {
+  color: var(--eval-bar-label-black);
+}

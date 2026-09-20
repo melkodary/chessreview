@@ -1,0 +1,99 @@
+.shell {
+  --header-h: 2.25rem;
+  /* Fixed-height flex column: the header takes its natural height and the
+     outlet fills the exact remainder. The viewer fills the outlet (height
+     100%), so no hardcoded header height is subtracted anywhere — prior fixed
+     arithmetic caused a tiny page scroll. */
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-lg);
+  border-bottom: 0.0625rem solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+
+.brand:hover {
+  color: var(--accent);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.context {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+}
+
+/* Game view hides the brand, so the back-link leads the bar: keep it left
+   instead of floating it mid-header (centred only against the brand). */
+.context:first-child {
+  justify-content: flex-start;
+}
+
+.sourceBadge {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2xs) var(--space-sm);
+  flex-shrink: 0;
+}
+
+.userLabel,
+.userLink {
+  font-size: var(--text-base);
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userLabel {
+  color: var(--text-muted);
+}
+
+.userLink {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.userLink:hover {
+  text-decoration: underline;
+}
+
+.outlet {
+  flex: 1;
+  min-height: 0;
+  /* Long browse pages (games list) scroll inside the outlet so the header
+     stays put; the viewer fills it exactly and never scrolls. */
+  overflow-y: auto;
+}

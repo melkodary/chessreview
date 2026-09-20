@@ -1,0 +1,96 @@
+.panel {
+  padding: var(--space-xs) var(--space-xs);
+  border-bottom: 0.0625rem solid var(--border);
+  flex-shrink: 0;
+  /* Reserve the full row count so a cold start, a mate with one line, and a
+     single-legal-move position all stop shoving the move list. --rows is set
+     inline from the analysisLines setting. */
+  min-height: calc(var(--rows) * (var(--text-base) * 1.5 + var(--space-2xs)));
+}
+
+.status {
+  color: var(--text-muted);
+  font-size: var(--text-base);
+}
+
+.error {
+  color: var(--eval-negative);
+  font-size: var(--text-base);
+}
+
+.line {
+  composes: buttonGhost from '../styles/primitives.module.css';
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  width: 100%;
+  text-align: left;
+  margin-bottom: var(--space-2xs);
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    opacity var(--motion-fast) var(--ease-standard);
+}
+
+.line:last-child {
+  margin-bottom: 0;
+}
+
+.line:not(:disabled):hover {
+  background: var(--accent-bg);
+}
+
+.line:not(:disabled):active {
+  background: var(--surface-2);
+}
+
+.line:focus-visible {
+  outline: 0.125rem solid var(--accent);
+  outline-offset: var(--space-2xs);
+}
+
+.line:disabled {
+  cursor: default;
+}
+
+/* Held from a previous position: visibly de-emphasised, and never consumed by
+   the arrows or the eval bar. */
+.line.stale {
+  opacity: 0.45;
+}
+
+.badge {
+  color: var(--on-colored);
+  font-size: var(--text-base);
+  font-weight: 700;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.badge.positive {
+  background: var(--eval-positive);
+}
+
+.badge.negative {
+  background: var(--eval-negative);
+}
+
+.badge.neutral {
+  background: var(--text-muted);
+}
+
+.moves {
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.moves.primary {
+  color: var(--text);
+}

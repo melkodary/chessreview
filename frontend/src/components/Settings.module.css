@@ -1,0 +1,148 @@
+.root {
+  position: relative;
+}
+
+/* Ghost, like the viewer's Copy FEN/PGN icon buttons: muted until hovered. */
+.toggle {
+  composes: buttonGhost from '../styles/primitives.module.css';
+}
+
+button.toggle {
+  /* Composed primitive CSS emits after this module; scope preserves local size. */
+  font-size: var(--text-xl);
+  padding: var(--space-2xs);
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  width: 20.625rem;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+}
+
+.section {
+  margin-bottom: var(--space-md);
+}
+
+.label {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03125rem;
+  margin-bottom: var(--space-xs);
+}
+
+.themeRow {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.themeBtn {
+  flex: 1;
+  padding: var(--space-xs);
+  border: 0.125rem solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--text-base);
+  text-transform: capitalize;
+}
+
+/* Same two-up selector grammar as the theme row, for a non-theme boolean. */
+.optionRow {
+  composes: themeRow;
+}
+
+.optionBtn {
+  composes: themeBtn;
+}
+
+/* Spelled out rather than composed from .themeBtnActive: that name exists only
+   inside a compound selector, which postcss-modules-scope cannot compose from. */
+.optionBtn.optionBtnActive {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.themeBtn.themeBtnActive {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 0.0625rem solid var(--border);
+  margin-bottom: var(--space-md);
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: var(--space-xs) 0;
+  background: none;
+  border: none;
+  border-bottom: 0.125rem solid transparent;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tabActive {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.slider {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-base);
+  color: var(--text-muted);
+}
+
+.spaced {
+  margin-top: var(--space-xs);
+}
+
+/* Engine download/cache/active status row. */
+.status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
+.activePill {
+  color: var(--accent);
+  background: var(--accent-bg);
+  padding: 0 var(--space-2xs);
+  border-radius: var(--radius);
+  font-size: var(--text-base);
+  font-weight: 700;
+}

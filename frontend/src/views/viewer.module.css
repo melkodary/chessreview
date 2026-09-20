@@ -1,0 +1,374 @@
+.root {
+  /* Board sizes itself in CSS — the smaller of: fit the viewport height, or
+     the width left after the panel's guaranteed minimum + chrome. No flat
+     fixed cap — the two budgets already bound it to the real viewport, so a
+     third ceiling only left dead space on tall/ultrawide screens.
+       Vertical budget = root padding + player chips + board-card padding.
+       Horizontal budget = root padding + gap + board-card overhead (panel excl.).
+     Board's width budget uses the panel's MIN (not its actual width) so the
+     two vars don't cycle — this only matters when height, not width, is the
+     tighter budget; the panel's own clamp below still guarantees it never
+     drops under that min, so the board never overlaps it. */
+  --panel-min: 18.75rem;
+  --panel-max: 31.25rem;
+  --eval-bar-width: 1.375rem;
+  --board-size: round(down, min(calc(100dvh - 6.5rem - var(--header-h, 0)), calc(100vw - 6.875rem - var(--panel-min))), 0.5rem);
+  /* Panel claims 80% of the real leftover space next to the board (not a flat
+     vw fraction — a flat % undershoots badly on ordinary desktop widths,
+     since the board is usually height-capped long before it's width-capped).
+     The remaining 20% stays idle as breathing room instead of being fully
+     consumed. Clamped to the same min/max as the board's own budget. */
+  --panel-width: clamp(var(--panel-min), calc((100vw - var(--board-size) - 6.875rem) * 0.60), var(--panel-max));
+  display: flex;
+  /* stretch: both columns span the full viewport height. The board is then
+     top-anchored within its column (boardPanel align-self) so it never floats
+     mid-viewport on resize; the sidebar fills the height and scrolls inside. */
+  align-items: stretch;
+  justify-content: center;
+  /* Fill the AppShell outlet exactly (flex gives us the post-header remainder),
+     so no hardcoded header height is subtracted — avoids a page scroll when the
+     real header is taller than a nominal value. */
+  height: 100%;
+  gap: var(--space-md);
+  padding: var(--space-xs) var(--space-lg);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.boardPanel {
+  background: var(--board-surround);
+  padding: var(--space-sm);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  /* Pin the board to the top of the viewport (don't center it in the stretched
+     column) — kills the floating gap above the board during window resize. */
+  align-self: flex-start;
+}
+
+.boardRow {
+  display: flex;
+  gap: var(--space-xs);
+  flex: 1;
+  /* Stretch so the eval bar matches the board's height (no JS height prop). */
+  align-items: stretch;
+}
+
+.sidePanel {
+  composes: card from '../styles/primitives.module.css';
+  width: var(--panel-width);
+  /* No fixed height — the stretched column fills the full viewport (100dvh);
+     content scrolls in the inner flex:1 region (move list / summary), so the
+     panel reaches the viewport bottom regardless of board size. */
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.graphTop {
+  padding: var(--space-xs) var(--space-2xs);
+  border-bottom: 0.0625rem solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Summary screen: scoreboard scrolls, Start Review button stays pinned below */
+.summaryScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Summary screen: Start Review button row */
+.startRow {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-2xs);
+  border-top: 0.0625rem solid var(--border);
+}
+
+.startBtn {
+  composes: buttonPrimary from '../styles/primitives.module.css';
+  flex: 1;
+}
+
+.rerunBtn {
+  composes: buttonSecondary from '../styles/primitives.module.css';
+  flex: 0 0 auto;
+}
+
+.rerunBtn:disabled {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: default;
+  opacity: 0.45;
+}
+
+.rerunBtn:disabled:hover {
+  border-color: var(--border);
+}
+
+/* Walkthrough screen: header with back-to-summary affordance */
+.walkHeader {
+  display: flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 0.0625rem solid var(--border);
+  flex-shrink: 0;
+}
+
+.walkBack {
+  composes: buttonGhost from '../styles/primitives.module.css';
+}
+
+/* Walkthrough screen: mini eval graph pinned at the bottom */
+.miniGraph {
+  padding: var(--space-xs) var(--space-sm);
+  border-top: 0.0625rem solid var(--border);
+  flex-shrink: 0;
+}
+
+.evalBarGutter {
+  width: var(--eval-bar-width);
+  flex-shrink: 0;
+}
+
+/* Indent the player chips so their left edge aligns with the board (which is
+   offset right by the eval bar + the boardRow gap). */
+.playerRow {
+  padding-left: calc(var(--eval-bar-width) + var(--space-xs));
+}
+
+
+.tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 0.0625rem solid var(--border);
+  background: var(--surface-2);
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) 0;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 0.125rem solid transparent;
+  user-select: none;
+  outline: none;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab:focus-visible {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.tabActive {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.depthBadge {
+  composes: badgeCompact from '../styles/primitives.module.css';
+  font-family: var(--font-mono);
+  color: var(--accent);
+  background: var(--accent-bg);
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  white-space: nowrap;
+}
+
+.depthBadge::before {
+  content: '';
+  width: 0.25rem;
+  height: 0.25rem;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse-coral 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.depthBadgeSettled {
+  opacity: 0.7;
+}
+
+.depthBadgeSettled::before {
+  display: none;
+}
+
+.navRow {
+  display: flex;
+  border-top: 0.0625rem solid var(--border);
+  flex-shrink: 0;
+}
+
+.viewerFooter {
+  flex-shrink: 0;
+}
+
+.exportToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--surface);
+}
+
+.exportButton {
+  composes: buttonGhost from '../styles/primitives.module.css';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xs);
+  color: var(--text-muted);
+}
+
+.exportButton:hover {
+  color: var(--text);
+}
+
+.exportButton:focus-visible {
+  color: var(--text);
+  outline: 0.125rem solid var(--accent);
+  outline-offset: var(--space-2xs);
+}
+
+.exportButton svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.exportFeedback {
+  margin-left: var(--space-xs);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.exportError {
+  color: var(--eval-negative);
+}
+
+/* "Exploring variation" banner shown above the move list in Analysis mode. */
+.exploreBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  margin: var(--space-xs) var(--space-md) 0;
+  padding: var(--space-xs) var(--space-sm);
+  border: 0.0625rem solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-bg);
+  font-size: var(--text-base);
+  flex-shrink: 0;
+}
+
+.exploreLabel {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.exploreReset {
+  composes: button from '../styles/primitives.module.css';
+}
+
+button.exploreReset {
+  color: var(--accent);
+  font-weight: 600;
+  padding: var(--space-2xs);
+}
+
+.exploreReset:hover {
+  text-decoration: underline;
+}
+
+/* Narrow screens: stack into a single column and let the page scroll. The
+   board sizes to the available width (reserving the eval-bar gutter + padding)
+   or the viewport height, whichever is smaller. */
+@media (max-width: 51.25rem) {
+  .root {
+    /* Third budget (55dvh) is the stacked-only one: width binds first on a
+       phone in portrait, but in landscape (and on a tall tablet) the board
+       would otherwise eat the whole viewport and push the panel off-screen. */
+    --board-size: round(down, min(calc(100vw - 4.375rem), calc(100dvh - 6.5rem - var(--header-h, 0)), 55dvh), 0.5rem);
+    flex-direction: column;
+    align-items: stretch;
+    /* Single column taller than the viewport: let the page scroll (don't pin to
+       100dvh / clip). Overrides the desktop fixed height. */
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  /* Center the board column itself (so the board stays centered), but keep the
+     panel's default stretch so the player chips left-align to the board column
+     rather than centering. Also undo the desktop top-anchor. */
+  .boardPanel {
+    align-self: center;
+  }
+
+  .sidePanel {
+    width: 100%;
+    /* Stacked, the panel is taller than the viewport and the page scrolls in
+       the AppShell outlet — the desktop clip would kill the sticky tabs/nav
+       below. Nothing overflows here (the card's own children are square-edged
+       and get their corners back explicitly). */
+    overflow: visible;
+  }
+
+  /* Tabs pin to the top of the scroll container: on a phone the panel is long
+     enough that Review/Analysis would otherwise scroll away entirely. */
+  .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  /* Comfortable touch targets and wrap instead of overflow. */
+  .tab {
+    min-height: 2.75rem;
+  }
+
+  /* Shared navigation/export footer pins to the bottom so move and copy
+     controls stay reachable while the board is on screen. Above the tabs'
+     z-index: both can never overlap, but the footer is the one being tapped.
+     Needs its own background because the card sits behind scrolling content,
+     not under a sticky child. */
+  .viewerFooter {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: var(--surface);
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+
+  .exportToolbar {
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+
+  .exportButton {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+}

@@ -1,0 +1,28 @@
+.screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  background: var(--bg);
+  color: var(--text);
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.screen button {
+  padding: var(--space-xs) var(--space-md);
+  border: 0.0625rem solid var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--glow-accent);
+  cursor: pointer;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.screen button:hover {
+  filter: brightness(1.1);
+}

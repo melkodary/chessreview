@@ -1,0 +1,212 @@
+.panel {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: var(--space-2xs);
+  container-type: inline-size;
+}
+
+.heading {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03125rem;
+  margin-bottom: var(--space-xs);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2rem 1fr 1fr;
+  align-items: center;
+}
+
+/* With clocks: white/black stay on fixed columns. Spare width becomes a spacer;
+   the right-aligned time column never grows past its readable cap. */
+.rowTimed {
+  grid-template-columns: 2rem 4.875rem 4.875rem minmax(0, 1fr) minmax(4rem, 9rem);
+}
+
+.timeSpacer {
+  min-width: 0;
+}
+
+/* full-width zebra rows */
+.row:nth-of-type(even) {
+  background: var(--surface-2);
+}
+
+.moveNum {
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  padding-left: var(--space-xs);
+}
+
+.cell {
+  padding: var(--space-2xs) var(--space-xs);
+  cursor: pointer;
+  font-size: var(--text-base);
+  color: var(--text);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+/* This local wrapper keeps classification icons compact only in the move list. */
+.moveIcon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.cell:hover {
+  background: var(--accent-bg);
+}
+
+/* Time column: white time stacked above black. Each row is a horizontal
+   magnitude bar that spans the column (no track — the fill alone is the gauge,
+   anchored right and growing left toward the moves) + a small time readout. */
+.timeCol {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+}
+
+.timeEntry {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2xs);
+  line-height: 1;
+}
+
+.timeBar {
+  flex: 1;
+  padding: 0 var(--space-2xs);
+  height: 0.5rem;
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.timeBarFill {
+  height: 100%;
+}
+
+/* Trackless: white-ply takes the LIGHTER tone for the mode, black-ply the
+   darker — so the white-move bar is never the darkest. The pair swaps by mode
+   because --text is dark on light themes but light on dark themes. */
+.fillWhite {
+  background: var(--text);
+  /* dark theme: --text is the light tone */
+}
+
+.fillBlack {
+  background: var(--text-muted);
+}
+
+:global([data-theme='light']) .fillWhite {
+  background: var(--text-muted);
+  /* light theme: muted is the lighter-of-the-two */
+}
+
+:global([data-theme='light']) .fillBlack {
+  background: var(--text);
+}
+
+.time {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.6875rem;
+  text-align: right;
+  flex-shrink: 0;
+  padding-right: var(--space-2xs);
+  line-height: 1;
+}
+
+/* Move columns need 11.75rem; below this width, labels would compete with them.
+   Keep their text in the accessibility tree while visually swapping the pair. */
+@container (max-width: 22rem) {
+  .timeEntry {
+    display: grid;
+    grid-template-columns: 3rem;
+    justify-content: end;
+    min-height: 0.75rem;
+  }
+
+  .timeBar,
+  .time {
+    grid-area: 1 / 1;
+  }
+
+  .timeBar {
+    width: 100%;
+    transition: opacity var(--motion-fast) var(--ease-standard);
+  }
+
+  .time {
+    justify-self: end;
+    padding-right: var(--space-2xs);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion-fast) var(--ease-standard);
+  }
+
+  .timeCol:hover .timeBar {
+    opacity: 0;
+  }
+
+  .timeCol:hover .time {
+    opacity: 1;
+  }
+}
+
+.cell.active {
+  font-weight: 700;
+  background: var(--move-highlight-bg);
+  color: var(--move-highlight-text);
+}
+
+/* Game continuation past the deviation ply, shown while a variation is explored. */
+.cell.dimmed {
+  opacity: 0.45;
+}
+
+/* The explored variation, inserted after the deviation ply. */
+.branch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-xs) var(--space-2xs) var(--space-lg);
+  border-left: 0.125rem solid var(--accent, currentColor);
+  margin: var(--space-2xs) 0 var(--space-2xs) var(--space-sm);
+  font-style: italic;
+}
+
+.branchMove {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+/* Verdict pending: the backend is grading this branch ply. */
+.branchPending {
+  color: var(--text-muted);
+  animation: branchPulse 1s ease-in-out infinite;
+}
+
+@keyframes branchPulse {
+
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}

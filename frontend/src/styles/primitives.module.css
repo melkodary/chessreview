@@ -1,0 +1,108 @@
+/* Shared structural primitives — composed into component modules via
+   `composes: <name> from '../../styles/primitives.module.css'` (path per
+   caller). They reference only token layers (--space-* / --text-* /
+   --radius-* / color vars), never raw literals, so anything built on them
+   conforms to the theme by construction.
+
+   Scope note: panels/section-dividers vary too much (full border vs
+   border-bottom only, heterogeneous padding) to force into one primitive, so
+   the set here is the genuinely uniform, heavily-duplicated chrome: buttons,
+   badges, and the one elevated card. */
+
+/* Elevated surface — bordered, rounded, shadowed (the side panel, error box). */
+.card {
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+/* Button reset — every button starts here (kills the scattered
+   border:none + cursor:pointer + font re-declarations). */
+.button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: inherit;
+  padding: 0;
+}
+
+/* Primary action — the one important action per view. Bordered + faint accent
+   wash (never a solid fill); accent border/text. Glow is a no-op token
+   (`none`) on every skin except the phosphor dark skin. */
+.buttonPrimary {
+  composes: button;
+  border: 0.0625rem solid var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-radius: var(--radius);
+  padding: var(--space-xs) var(--space-md);
+  font-weight: 600;
+  box-shadow: var(--glow-accent);
+}
+
+.buttonPrimary:hover {
+  filter: brightness(1.1);
+}
+
+/* Secondary action — neutral bordered box, default text. */
+.buttonSecondary {
+  composes: button;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-xs) var(--space-md);
+  font-weight: 600;
+}
+
+.buttonSecondary:hover {
+  border-color: var(--text-muted);
+}
+
+/* Destructive action — red border + text. Red is reserved for this + errors. */
+.buttonDanger {
+  composes: button;
+  border: 0.0625rem solid var(--eval-negative);
+  color: var(--eval-negative);
+  border-radius: var(--radius);
+  padding: var(--space-xs) var(--space-md);
+  font-weight: 600;
+}
+
+.buttonDanger:hover {
+  filter: brightness(1.1);
+}
+
+/* Tertiary / low-emphasis text button (breadcrumb, back, reset, refresh). */
+.buttonGhost {
+  composes: button;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.buttonGhost:hover {
+  color: var(--text);
+}
+
+/* Small label chip. */
+.badge {
+  border-radius: var(--radius);
+  padding: var(--space-2xs) var(--space-xs);
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+
+/* Dense label chip for constrained chrome such as tab metadata. */
+.badgeCompact {
+  composes: badge;
+  padding: 0 var(--space-2xs);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+/* Fully-pilled variant of a chip. */
+.pill {
+  composes: badge;
+  border-radius: var(--radius);
+}

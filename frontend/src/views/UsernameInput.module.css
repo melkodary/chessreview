@@ -1,0 +1,111 @@
+.card {
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-lg);
+  width: 100%;
+  max-width: 34rem;
+  box-shadow: var(--shadow-md);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-xl);
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-xs);
+  color: var(--text);
+}
+
+.subtitle {
+  margin: 0 0 var(--space-md);
+  color: var(--text-muted);
+  font-size: var(--text-base);
+}
+
+.sourceToggle {
+  display: flex;
+  margin-bottom: var(--space-md);
+  border-bottom: 0.0625rem solid var(--border);
+}
+
+.sourceBtn {
+  border: none;
+  border-bottom: 0.125rem solid transparent;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  flex: 1;
+  text-align: center;
+  padding: var(--space-sm) 0;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.sourceBtn:hover {
+  color: var(--text);
+}
+
+.sourceBtnActive {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: var(--space-sm) var(--space-sm);
+  margin-bottom: var(--space-sm);
+  font-size: var(--text-base);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.submit {
+  composes: buttonPrimary from '../styles/primitives.module.css';
+  flex: 1;
+}
+
+button.submit {
+  padding: var(--space-sm);
+  font-size: var(--text-base);
+}
+
+.submit:disabled {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: default;
+}
+
+.submitSecondary {
+  composes: buttonSecondary from '../styles/primitives.module.css';
+  flex: 1;
+}
+
+button.submitSecondary {
+  padding: var(--space-sm);
+  font-size: var(--text-base);
+}
+
+.submitSecondary:disabled {
+  border-color: var(--border);
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.error {
+  color: var(--eval-negative);
+  margin-top: var(--space-sm);
+  font-size: var(--text-base);
+}

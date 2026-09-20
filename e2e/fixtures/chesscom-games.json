@@ -1,0 +1,26 @@
+{
+  "_comment": "Anonymised snapshot of a public Chess.com account, 2026-06. Trimmed to 3 games. Re-snapshot with scripts/snapshot-chesscom.ts if Chess.com schema changes.",
+  "games": [
+    {
+      "white": { "username": "rookiefan", "result": "win", "rating": 3250 },
+      "black": { "username": "opponent1", "result": "resigned", "rating": 2800 },
+      "end_time": 1748736000,
+      "url": "https://www.chess.com/game/live/123456789",
+      "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[Date \"2026.06.01\"]\n[Round \"-\"]\n[White \"rookiefan\"]\n[Black \"opponent1\"]\n[Result \"1-0\"]\n[WhiteElo \"3250\"]\n[BlackElo \"2800\"]\n[TimeControl \"180\"]\n[Termination \"rookiefan won by resignation\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. d3 b5 7. Bb3 d6 8. c3 O-O 9. h3 Na5 10. Bc2 c5 1-0"
+    },
+    {
+      "white": { "username": "opponent2", "result": "resigned", "rating": 2900 },
+      "black": { "username": "rookiefan", "result": "win", "rating": 3250 },
+      "end_time": 1748822400,
+      "url": "https://www.chess.com/game/live/123456790",
+      "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[Date \"2026.06.02\"]\n[Round \"-\"]\n[White \"opponent2\"]\n[Black \"rookiefan\"]\n[Result \"0-1\"]\n[WhiteElo \"2900\"]\n[BlackElo \"3250\"]\n[TimeControl \"180\"]\n[Termination \"rookiefan won by resignation\"]\n\n1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. e3 O-O 5. Bd3 d5 0-1"
+    },
+    {
+      "white": { "username": "rookiefan", "result": "agreed", "rating": 3250 },
+      "black": { "username": "opponent3", "result": "agreed", "rating": 3100 },
+      "end_time": 1748908800,
+      "url": "https://www.chess.com/game/live/123456791",
+      "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[Date \"2026.06.03\"]\n[Round \"-\"]\n[White \"rookiefan\"]\n[Black \"opponent3\"]\n[Result \"1/2-1/2\"]\n[WhiteElo \"3250\"]\n[BlackElo \"3100\"]\n[TimeControl \"600\"]\n[Termination \"Game drawn by agreement\"]\n\n1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 1/2-1/2"
+    }
+  ]
+}

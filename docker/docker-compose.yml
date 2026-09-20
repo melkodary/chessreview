@@ -1,0 +1,44 @@
+# Pinned so the project name never derives from the directory basename.
+# Named volumes are prefixed with it (`chessreview_review-data` — the durable
+# SQLite review store), so an unpinned name would silently orphan them the
+# moment this file moves or the checkout dir is renamed.
+name: chessreview
+
+services:
+  backend:
+    build:
+      context: ../backend
+      args:
+        # Empty default: generic armv8/x86-64-avx2 unless the host CPU is
+        # confirmed dotprod-capable (`grep asimddp /proc/cpuinfo`).
+        STOCKFISH_ARCH: ${STOCKFISH_ARCH:-}
+    image: ghcr.io/${GH_OWNER:-local}/${IMAGE_PREFIX:-chessreview}-backend:${IMAGE_TAG:-local}
+    # Optional: a fresh clone has no .env.local and boots on config.py's
+    # defaults (`python -m config --dump-env` prints the catalogue).
+    env_file:
+      - path: ../backend/.env.local
+        required: false
+    environment:
+      # Override Stockfish for the container (a host .env.local would point at
+      # a host-local binary). Reviews are in-memory — no database service.
+      STOCKFISH_PATH: /usr/bin/stockfish
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-http://localhost:8000}
+        VITE_CHESSCOM_API_BASE: ${VITE_CHESSCOM_API_BASE:-https://api.chess.com/pub}
+        VITE_MAX_ARCHIVES: ${VITE_MAX_ARCHIVES:-12}
+        VITE_DEFAULT_ANALYSIS_TIME_MS: ${VITE_DEFAULT_ANALYSIS_TIME_MS:-20000}
+        VITE_DEFAULT_REVIEW_DEPTH: ${VITE_DEFAULT_REVIEW_DEPTH:-18}
+        VITE_DEFAULT_REVIEW_MULTIPV: ${VITE_DEFAULT_REVIEW_MULTIPV:-2}
+    image: ghcr.io/${GH_OWNER:-local}/${IMAGE_PREFIX:-chessreview}-frontend:${IMAGE_TAG:-local}
+    # Container listens on 8080 (unprivileged nginx, uid 101); the daemon binds
+    # the privileged host port, not the container process.
+    ports:
+      - "80:8080"
+    depends_on:
+      - backend

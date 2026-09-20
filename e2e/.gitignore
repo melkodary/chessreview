@@ -1,0 +1,12 @@
+node_modules
+
+# Playwright
+test-results/
+playwright-report/
+
+# Yarn
+.yarn/cache
+.yarn/install-state.gz
+
+# Screenshot harness output (yarn shots)
+shot-out/

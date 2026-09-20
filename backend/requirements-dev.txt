@@ -1,0 +1,12 @@
+-r requirements.txt
+
+pytest~=8.3
+httpx~=0.27
+
+# lab/ only — the curve fits in experiments 019 and 031 grid-refine over arrays.
+# Never imported by backend/ or tests/, so it stays out of requirements.txt and
+# the image. It was an undeclared assumption until 2026-07-26: 019 has imported
+# it since it shipped, and the Python 3.14 venv rebuild left it uninstalled, so
+# re-running 019 raised ModuleNotFoundError. scipy stays out — a 1-3 parameter
+# fit does not justify it (019).
+numpy~=2.5

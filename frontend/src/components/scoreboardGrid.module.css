@@ -1,0 +1,45 @@
+/* Shared scoreboard row scaffold for ReviewSummary + ReviewScoreboardSkeleton.
+   Both must lay out identically so the skeleton→summary transition is a swap,
+   not a relayout. Layout lives here once; each component keeps only its own
+   content styles (counts/players vs. shimmer). */
+
+.grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.row,
+.headRow {
+  display: grid;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs);
+}
+
+/* Data rows: label | white-count | icon | black-count */
+.row {
+  grid-template-columns: 1fr 2.5rem auto 2.5rem;
+}
+
+/* Header row: white-block | spacer | black-block (names need real space) */
+.headRow {
+  grid-template-columns: 1fr auto 1fr;
+  border-bottom: 0.0625rem solid var(--border);
+  padding-bottom: var(--space-xs);
+  margin-bottom: var(--space-2xs);
+}
+
+.row:nth-of-type(even) {
+  background: var(--surface-2);
+}
+
+.rowLabel {
+  font-size: var(--text-lg);
+  color: var(--text);
+}
+
+.rowIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

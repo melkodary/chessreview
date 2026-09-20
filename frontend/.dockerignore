@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-ssr/
+.env
+.env.local
+.git
+.gitignore
+.DS_Store
+*.log
+Dockerfile
+.dockerignore

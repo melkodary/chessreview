@@ -1,0 +1,52 @@
+.board {
+  flex-shrink: 0;
+  position: relative;
+  /* Square, sized by CSS — --board-size is set by the viewer layout; the
+     fallback keeps standalone renders (e.g. tests) at a sane size. */
+  width: var(--board-size, 30rem);
+  aspect-ratio: 1;
+}
+
+.arrowMeta {
+  display: none;
+}
+
+.badge {
+  position: absolute;
+  width: 5.25%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+  display: flex;
+  aspect-ratio: 1;
+}
+
+.badge svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Pending verdict: the branch ply is still being graded — a pulsing disc over
+   the moved piece, mirroring MoveList's pending indicator. */
+.badgePending {
+  width: 70%;
+  height: 70%;
+  margin: auto;
+  border-radius: var(--radius-round);
+  background: var(--text-muted);
+  animation: badgePulse 1s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "_comment": [
+    "Docker Scout policy config. Usage:",
+    "  docker scout policy <image> --policy-config docker/scout-policy.json",
+    "",
+    "copyleft-license is disabled deliberately, not to hide a finding. Every",
+    "package it flags is base-image OS userland (busybox, alpine-baselayout,",
+    "musl-utils, ssl_client) — unremovable without abandoning Alpine, and worse",
+    "on Debian (369 packages on the backend). Copyleft obligations attach to",
+    "DISTRIBUTION; these images run privately on our own box and are never",
+    "shipped to third parties. If that ever changes — public images, or handing",
+    "a build to someone else — re-enable this and do a real license review.",
+    "",
+    "Nothing else is disabled: CVEs, non-root, base-image freshness and",
+    "attestations all still gate."
+  ],
+  "policies": [
+    { "name": "copyleft-license", "enabled": false }
+  ]
+}

@@ -1,0 +1,18 @@
+.btn {
+  flex: 1;
+  min-height: 2.875rem;
+  background: var(--nav-btn-bg);
+  border: 0.0625rem solid var(--nav-btn-border);
+  border-radius: var(--radius);
+  color: var(--nav-btn-text);
+  cursor: pointer;
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.btn:disabled {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: default;
+  opacity: 0.4;
+}
