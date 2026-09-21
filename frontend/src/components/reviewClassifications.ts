@@ -1,3 +1,4 @@
+import { skin } from '@private'
 import type { Classification } from '../api/review'
 
 // Scoreboard order — shared by ReviewSummary and ReviewScoreboardSkeleton so the
@@ -8,7 +9,7 @@ export const CLASS_ORDER: Classification[] = [
   'inaccuracy', 'mistake', 'miss', 'blunder',
 ]
 
-export const CLASS_LABEL: Record<Classification, string> = {
+const DEFAULT_CLASS_LABEL: Record<Classification, string> = {
   brilliant: 'Brilliant',
   great: 'Critical',
   book: 'Book',
@@ -20,6 +21,11 @@ export const CLASS_LABEL: Record<Classification, string> = {
   mistake: 'Mistake',
   miss: 'Missed',
   blunder: 'Blunder',
+}
+
+export const CLASS_LABEL: Record<Classification, string> = {
+  ...DEFAULT_CLASS_LABEL,
+  ...skin.labels,
 }
 
 // Icons in the move list are reserved for moves worth looking at. book / best /

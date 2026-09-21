@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import { postJson } from './request'
 import type {
   ExplainArm,
@@ -10,6 +11,14 @@ export type Classification =
   | 'book' | 'forced'
   | 'brilliant' | 'great' | 'best' | 'excellent' | 'good'
   | 'inaccuracy' | 'mistake' | 'blunder' | 'miss'
+
+// `@private`'s override of core's neutral labels/glyphs/palette — partial,
+// keyed by the same Classification ids. Stub exports `{}`.
+export interface ClassificationSkin {
+  labels?: Partial<Record<Classification, string>>
+  shapes?: Partial<Record<Classification, JSX.Element>>
+  palette?: Partial<Record<Classification, string>>
+}
 
 export interface MoveReview {
   ply: number

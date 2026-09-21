@@ -2,10 +2,12 @@
 // Drop-in for `src/private/` when the overlay is absent (vite.config.ts picks
 // it automatically): same exports, nothing rendered, no extra game sources.
 import type { ReactNode } from 'react'
-import type { ExplainMoveRequest } from '../api/review'
+import type { ClassificationSkin, ExplainMoveRequest } from '../api/review'
 import type { GameSource } from '../api/types'
 
 export const extraSources: Record<string, GameSource> = {}
+
+export const skin: ClassificationSkin = {}
 
 export function StatsMenu(): ReactNode {
   return null

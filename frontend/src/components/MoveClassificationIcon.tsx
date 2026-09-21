@@ -1,4 +1,5 @@
 import type { JSX } from 'react'
+import { skin } from '@private'
 import type { Classification } from '../api/review'
 import styles from './MoveClassificationIcon.module.css'
 
@@ -52,7 +53,7 @@ function Ques(cx: number, k: number): JSX.Element {
 }
 
 const PAIR = 0.72 // scale for one mark of a two-mark glyph
-const SHAPE: Record<Classification, JSX.Element> = {
+const DEFAULT_SHAPE: Record<Classification, JSX.Element> = {
   // ── Punctuation, composed from the two primitives above ──
   brilliant: <>{Excl(5.25, PAIR)}{Excl(8.75, PAIR)}</>,
   great:     Excl(7, 1.0),
@@ -97,6 +98,8 @@ const SHAPE: Record<Classification, JSX.Element> = {
     />
   ),
 }
+
+const SHAPE: Record<Classification, JSX.Element> = { ...DEFAULT_SHAPE, ...skin.shapes }
 
 export default function MoveClassificationIcon({ classification }: Props) {
   return (
