@@ -20,13 +20,13 @@ vi.mock('../api/analyzer', () => ({
 
 function game(): Game {
   return {
-    source: 'chesscom',
+    source: 'lichess',
     id: '1',
     white: { username: 'alice', result: 'win', rating: 1500 },
     black: { username: 'bob', result: 'loss', rating: 1400 },
     pgn: '1. e4 e5 *',
     endTime: 0,
-    url: 'https://www.chess.com/game/live/1',
+    url: 'https://lichess.org/1',
   }
 }
 
@@ -55,7 +55,7 @@ const summary: ReviewSummary = {
 
 function reviewSnapshot(status: ReviewSnapshot['status']): ReviewSnapshot {
   return {
-    id: 'job-1', source: 'chesscom', status, white: 'alice', black: 'bob',
+    id: 'job-1', source: 'lichess', status, white: 'alice', black: 'bob',
     reviewed: status === 'done' ? 1 : 0, totalPlies: 2,
     userId: null, gameId: '1', accuracy: status === 'done' ? 99 : null,
     createdAt: '2026-01-01T00:00:00Z',
@@ -91,7 +91,9 @@ function LocationProbe() {
   )
 }
 
-function renderApp(initialEntry = '/alice/games/1/review') {
+// Source is explicit: without it the shell falls back to the build's default
+// tab, which differs between the public and the lab build.
+function renderApp(initialEntry = '/alice/games/1/review?source=lichess') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <SettingsProvider>
@@ -150,7 +152,7 @@ describe('ReviewPanel start / cancel / persistence (in shell)', () => {
   it('Cancel aborts a manually started review and returns without restarting', async () => {
     fakeRunning()
     const { container, getByRole, getByTestId } = renderApp(
-      '/alice/games/1/review?source=chesscom&move=1',
+      '/alice/games/1/review?source=lichess&move=1',
     )
     await waitFor(() => getByRole('button', { name: /^start review$/i }))
     await act(async () => {
@@ -160,7 +162,7 @@ describe('ReviewPanel start / cancel / persistence (in shell)', () => {
 
     await act(async () => { clickAria(container, /cancel review/i) })
     expect(getByTestId('loc').textContent).toBe('/alice/games/1/analyze')
-    expect(getByTestId('search').textContent).toBe('?source=chesscom&move=1')
+    expect(getByTestId('search').textContent).toBe('?source=lichess&move=1')
     expect(getByTestId('analyze')).toBeInTheDocument()
 
     // Return to Review → hero; no new job without another click.
@@ -194,7 +196,7 @@ describe('ReviewPanel hydration', () => {
 
   it('hydrates an existing done job without creating a new one', async () => {
     vi.mocked(analyzer.listReviews).mockResolvedValueOnce([{
-      id: 'job-hydrated', source: 'chesscom', status: 'done', white: 'alice', black: 'bob',
+      id: 'job-hydrated', source: 'lichess', status: 'done', white: 'alice', black: 'bob',
       reviewed: 2, totalPlies: 2, userId: null, gameId: '1', accuracy: 99,
       createdAt: '2026-01-01T00:00:00Z', finishedAt: '2026-01-01T00:00:01Z', depth: 20, multipv: 2,
       engine: 'Stockfish 19',
@@ -213,7 +215,7 @@ describe('ReviewPanel hydration', () => {
 
   it('enables rerun for a nonmatching review and submits selected settings without force', async () => {
     vi.mocked(analyzer.listReviews).mockResolvedValueOnce([{
-      id: 'job-hydrated', source: 'chesscom', status: 'done', white: 'alice', black: 'bob',
+      id: 'job-hydrated', source: 'lichess', status: 'done', white: 'alice', black: 'bob',
       reviewed: 2, totalPlies: 2, userId: null, gameId: '1', accuracy: 99,
       createdAt: '2026-01-01T00:00:00Z', finishedAt: '2026-01-01T00:00:01Z', depth: 20, multipv: 2,
       engine: 'Stockfish 19',
@@ -235,7 +237,7 @@ describe('ReviewPanel hydration', () => {
     // gives up and the request falls back to a backend search.
     expect(analyzer.createReview).toHaveBeenCalledWith(
       game().pgn, 18, 2,
-      expect.objectContaining({ source: 'chesscom', gameId: '1' }),
+      expect.objectContaining({ source: 'lichess', gameId: '1' }),
       undefined,
     )
   })

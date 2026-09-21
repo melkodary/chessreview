@@ -4,11 +4,11 @@ export class AnalyzeViewerPage {
   constructor(private page: Page) {}
 
   async goto(userId: string, gameId: string) {
-    await this.page.goto(`/${encodeURIComponent(userId)}/games/${encodeURIComponent(gameId)}/analyze`)
+    await this.page.goto(`/${encodeURIComponent(userId)}/games/${encodeURIComponent(gameId)}/analyze?source=lichess`)
   }
 
   async gotoReview(userId: string, gameId: string) {
-    await this.page.goto(`/${encodeURIComponent(userId)}/games/${encodeURIComponent(gameId)}/review`)
+    await this.page.goto(`/${encodeURIComponent(userId)}/games/${encodeURIComponent(gameId)}/review?source=lichess`)
   }
 
   // The tab links live above the outlet, so a flip swaps the panel without

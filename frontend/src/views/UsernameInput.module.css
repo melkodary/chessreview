@@ -109,3 +109,11 @@ button.submitSecondary {
   margin-top: var(--space-sm);
   font-size: var(--text-base);
 }
+
+/* PgnImport's White/Black pick — the source tabs' look, inline with the button */
+.sideToggle {
+  composes: sourceToggle;
+  flex: 1;
+  margin: 0;
+  border-bottom: none;
+}

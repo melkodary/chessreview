@@ -4,7 +4,7 @@ export class GameViewerPage {
   constructor(private page: Page) {}
 
   async goto(userId: string, gameId: string) {
-    await this.page.goto(`/${encodeURIComponent(userId)}/games/${encodeURIComponent(gameId)}/review`)
+    await this.page.goto(`/${encodeURIComponent(userId)}/games/${encodeURIComponent(gameId)}/review?source=lichess`)
   }
 
   board() {

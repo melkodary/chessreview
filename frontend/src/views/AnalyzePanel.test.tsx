@@ -41,7 +41,7 @@ vi.mock('../settingsContext', () => ({
 
 const ctx: GameShellContext = {
   game: {
-    source: 'chesscom',
+    source: 'lichess',
     id: '1',
     white: { username: 'alice', rating: 1500, result: 'win' },
     black: { username: 'bob', rating: 1400, result: 'loss' },

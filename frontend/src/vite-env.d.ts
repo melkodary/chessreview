@@ -2,8 +2,6 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_BASE?: string
-  readonly VITE_CHESSCOM_API_BASE?: string
-  readonly VITE_MAX_ARCHIVES?: string
   readonly VITE_DEFAULT_ANALYSIS_TIME_MS?: string
   readonly VITE_ANALYSIS_DEPTH_CEILING?: string
   readonly VITE_DEFAULT_REVIEW_DEPTH?: string

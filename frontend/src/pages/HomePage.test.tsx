@@ -7,7 +7,9 @@ import HomePage from './HomePage'
 
 const { listRecent } = vi.hoisted(() => ({ listRecent: vi.fn() }))
 vi.mock('../api/sources', () => ({
-  asSource: (v: string | null) => (v === 'lichess' ? 'lichess' : 'chesscom'),
+  SOURCES: { lichess: { label: 'Lichess' }, pgn: { label: 'PGN' } },
+  DEFAULT_SOURCE: 'lichess',
+  asSource: (v: string | null) => (v === 'pgn' ? 'pgn' : 'lichess'),
   getSource: () => ({ listRecent, fetchGame: vi.fn() }),
 }))
 

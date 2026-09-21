@@ -28,7 +28,7 @@ def store(store_factory):
 
 def _create(store, pgn_hash="h1", **kw):
     params = dict(
-        source="chess.com", pgn="1. e4 e5", depth=22, multipv=3,
+        source="lichess", pgn="1. e4 e5", depth=22, multipv=3,
         pgn_hash=pgn_hash, white="Alice", black="Bob", total_plies=2,
     )
     params.update(kw)
@@ -85,7 +85,7 @@ def test_dedup_lookup_ignores_canceled_and_error(store):
 def _create_sourced(store, engine_source, pgn_hash="dup"):
     if engine_source == "frontend":
         return store.create_done(
-            source="chess.com", pgn="1. e4 e5", depth=22, multipv=3, pgn_hash=pgn_hash,
+            source="lichess", pgn="1. e4 e5", depth=22, multipv=3, pgn_hash=pgn_hash,
             white="Alice", black="Bob", total_plies=2, moves=[], summary={},
             engine="Stockfish 19", engine_source="frontend",
         )

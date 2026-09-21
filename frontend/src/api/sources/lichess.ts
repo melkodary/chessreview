@@ -32,6 +32,7 @@ function toGame(raw: RawGame): Game {
 }
 
 export const lichess: GameSource = {
+  label: 'Lichess',
   async listRecent(username, limit, until) {
     const params = new URLSearchParams({
       max: String(limit), pgnInJson: 'true', sort: 'dateDesc', clocks: 'true',

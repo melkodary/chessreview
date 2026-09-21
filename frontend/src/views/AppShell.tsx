@@ -1,11 +1,9 @@
 import { Link, Outlet, useParams, useSearchParams } from 'react-router-dom'
-import { asSource } from '../api/sources'
+import { asSource, SOURCES } from '../api/sources'
 import { routes } from '../router'
 import Settings from '../components/Settings'
 import { StatsMenu } from '@private'
 import styles from './AppShell.module.css'
-
-const SOURCE_LABEL: Record<string, string> = { chesscom: 'Chess.com', lichess: 'Lichess' }
 
 export default function AppShell() {
   const { userId, gameId } = useParams<{ userId?: string; gameId?: string }>()
@@ -28,7 +26,7 @@ export default function AppShell() {
             ) : (
               <span className={styles.userLabel}>{userId}</span>
             )}
-            <span className={styles.sourceBadge}>{SOURCE_LABEL[source]}</span>
+            <span className={styles.sourceBadge}>{SOURCES[source].label}</span>
           </div>
         )}
         <div className={styles.actions}>

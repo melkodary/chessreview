@@ -25,13 +25,13 @@ const PGN = `[Event "T"]
 
 function fakeGame(): Game {
   return {
-    source: 'chesscom',
+    source: 'lichess',
     id: '1',
     white: { username: 'alice', result: 'win', rating: 1500 },
     black: { username: 'bob', result: 'loss', rating: 1400 },
     pgn: PGN,
     endTime: 0,
-    url: 'https://www.chess.com/game/live/1',
+    url: 'https://lichess.org/1',
   }
 }
 
@@ -160,13 +160,13 @@ describe('GameShell exploration wiring', () => {
     const { getByTestId } = renderShell(
       'analyze',
       <div data-testid="panel" />,
-      '?source=chesscom&move=1&foo=keep',
+      '?source=lichess&move=1&foo=keep',
     )
 
     act(() => { press('ArrowRight') })
 
     await waitFor(() => {
-      expect(getByTestId('search').textContent).toBe('?source=chesscom&move=2&foo=keep')
+      expect(getByTestId('search').textContent).toBe('?source=lichess&move=2&foo=keep')
     })
     expect(getByTestId('navigation-type').textContent).toBe('REPLACE')
   })
@@ -188,13 +188,13 @@ describe('GameShell exploration wiring', () => {
     const { container, getByTestId } = renderShell(
       'review',
       <div data-testid="panel" />,
-      '?source=chesscom&move=2',
+      '?source=lichess&move=2',
     )
 
     act(() => { clickTab(container, /^analysis$/i) })
 
     await waitFor(() => {
-      expect(getByTestId('search').textContent).toBe('?source=chesscom&move=2')
+      expect(getByTestId('search').textContent).toBe('?source=lichess&move=2')
     })
   })
 

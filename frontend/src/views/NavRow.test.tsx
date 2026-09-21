@@ -29,7 +29,7 @@ describe('NavRow exports', () => {
 
   it.each([
     ['FEN', 'branch position w - - 7 21'],
-    ['PGN', '[Event "Original"]\n[Site "Chess.com"]\n\n1. e4 e5 2. Nf3 *\n'],
+    ['PGN', '[Event "Original"]\n[Site "?"]\n\n1. e4 e5 2. Nf3 *\n'],
   ] as const)('copies the exact %s payload', async (format, value) => {
     render(
       <NavRow

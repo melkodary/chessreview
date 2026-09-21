@@ -6,7 +6,7 @@ import type { Game } from '../api/types'
 import type { ReviewInboxItem } from '../api/analyzer'
 
 const game: Game = {
-  source: 'chesscom', id: '42',
+  source: 'lichess', id: '42',
   white: { username: 'alice', result: 'win', rating: 1500 },
   black: { username: 'bob', result: 'loss', rating: 1480 },
   pgn: '', endTime: 0, url: '',
@@ -24,7 +24,7 @@ function job(
   counts: ReviewInboxItem['counts'] = null,
 ): ReviewInboxItem {
   return {
-    id: 'j', source: 'chesscom', status,
+    id: 'j', source: 'lichess', status,
     white: 'alice', black: 'bob', reviewed: 2, totalPlies: 2,
     userId: 'alice', gameId: '42', accuracy, counts,
     createdAt: new Date().toISOString(), finishedAt: null,

@@ -13,7 +13,7 @@ vi.mock('../config', () => ({ REVIEW_ACTIVE_POLL_MS: 20 }))
 
 function item(id = 'j', status: ReviewInboxItem['status'] = 'done'): ReviewInboxItem {
   return {
-    id, source: 'chesscom', status,
+    id, source: 'lichess', status,
     white: 'a', black: 'b', reviewed: 2, totalPlies: 2,
     userId: 'a', gameId: '1', accuracy: 90,
     createdAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
@@ -74,8 +74,8 @@ describe('useReviewQueue', () => {
 
   it('threads source/userId through to listReviews', async () => {
     vi.mocked(analyzer.listReviews).mockResolvedValue([])
-    renderHook(() => useReviewQueue({ source: 'chesscom', userId: 'alice' }))
-    await waitFor(() => expect(analyzer.listReviews).toHaveBeenCalledWith('chesscom', 'alice'))
+    renderHook(() => useReviewQueue({ source: 'lichess', userId: 'alice' }))
+    await waitFor(() => expect(analyzer.listReviews).toHaveBeenCalledWith('lichess', 'alice'))
   })
 
   afterEach(() => { vi.useRealTimers() })

@@ -57,14 +57,14 @@ test('inbox row shows a provenance marker for a frontend-sourced review, none fo
   await mockBackend(page, {
     reviewQueue: () => [
       {
-        id: 'fe-job', source: 'chesscom', status: 'done',
+        id: 'fe-job', source: 'lichess', status: 'done',
         white: 'rookiefan', black: 'opponent1', reviewed: 10, total_plies: 10,
         user_id: 'rookiefan', game_id: '123456789', accuracy: 95.0,
         created_at: new Date().toISOString(), finished_at: new Date().toISOString(),
         depth: 18, multipv: 3, engine: 'Stockfish 19 Lite', engine_source: 'frontend',
       },
       {
-        id: 'be-job', source: 'chesscom', status: 'done',
+        id: 'be-job', source: 'lichess', status: 'done',
         white: 'opponent2', black: 'rookiefan', reviewed: 10, total_plies: 10,
         user_id: 'rookiefan', game_id: '123456790', accuracy: 90.0,
         created_at: new Date().toISOString(), finished_at: new Date().toISOString(),

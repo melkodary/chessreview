@@ -15,8 +15,10 @@ export class GameListPage {
     await this.page.getByRole('button', { name: 'Load Games' }).click()
   }
 
+  // Source is explicit: without it the app falls back to the build's default
+  // tab, which differs between the public and the lab build.
   async gotoGames(username: string) {
-    await this.page.goto(`/${encodeURIComponent(username)}/games`)
+    await this.page.goto(`/${encodeURIComponent(username)}/games?source=lichess`)
   }
 
   rows() {

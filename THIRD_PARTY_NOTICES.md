@@ -2,7 +2,7 @@
 
 Chess Review's own code is MIT (`LICENSE`) except `backend/`, which is GPLv3
 (`backend/LICENSE`). The components below are included or depended on under
-their own licenses. Not affiliated with or endorsed by Chess.com or Lichess.
+their own licenses. Not affiliated with or endorsed by Lichess.
 
 ## Stockfish (GPLv3)
 

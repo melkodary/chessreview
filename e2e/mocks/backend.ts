@@ -8,17 +8,29 @@ function loadFixture<T>(name: string): T {
   return JSON.parse(readFileSync(join(fixturesDir, name), 'utf-8')) as T
 }
 
-interface GamesFixture {
-  games: {
-    white: { username: string; result: string; rating: number }
-    black: { username: string; result: string; rating: number }
-    end_time: number
-    url: string
-    pgn: string
-  }[]
+// The mock's own game shape; served as Lichess NDJSON/JSON below.
+export interface FixtureGame {
+  id: string
+  white: { username: string; rating: number }
+  black: { username: string; rating: number }
+  winner?: 'white' | 'black'
+  end_time: number
+  pgn: string
 }
 
-const gamesFixture = loadFixture<GamesFixture>('chesscom-games.json')
+const gamesFixture = loadFixture<{ games: FixtureGame[] }>('games.json')
+
+function toLichess(g: FixtureGame) {
+  const side = (p: FixtureGame['white']) => ({ user: { name: p.username }, rating: p.rating })
+  return {
+    id: g.id,
+    players: { white: side(g.white), black: side(g.black) },
+    winner: g.winner,
+    pgn: g.pgn,
+    createdAt: g.end_time * 1000,
+    lastMoveAt: g.end_time * 1000,
+  }
+}
 
 const REVIEW_MOVES = [
   {
@@ -51,7 +63,7 @@ const REVIEW_SUMMARY = {
 // GameList); a test that needs the frontend variant overrides it explicitly.
 export const REVIEW_SNAPSHOTS = [
   {
-    id: 'job-e2e', source: 'chesscom', status: 'running',
+    id: 'job-e2e', source: 'lichess', status: 'running',
     white: 'rookiefan', black: 'opponent', reviewed: 1, total_plies: 2,
     user_id: 'rookiefan', game_id: '123', accuracy: null,
     created_at: new Date().toISOString(), finished_at: null,
@@ -59,7 +71,7 @@ export const REVIEW_SNAPSHOTS = [
     moves: REVIEW_MOVES.slice(0, 1), summary: null, error: null,
   },
   {
-    id: 'job-e2e', source: 'chesscom', status: 'done',
+    id: 'job-e2e', source: 'lichess', status: 'done',
     white: 'rookiefan', black: 'opponent', reviewed: 2, total_plies: 2,
     user_id: 'rookiefan', game_id: '123', accuracy: 95.0,
     created_at: new Date().toISOString(), finished_at: new Date().toISOString(),
@@ -70,14 +82,14 @@ export const REVIEW_SNAPSHOTS = [
 
 const REVIEW_QUEUE_ITEMS = [
   {
-    id: 'job-done', source: 'chesscom', status: 'done',
+    id: 'job-done', source: 'lichess', status: 'done',
     white: 'rookiefan', black: 'opponent', reviewed: 2, total_plies: 2,
     user_id: 'rookiefan', game_id: '123', accuracy: 95.0, counts: { best: 1 },
     created_at: new Date().toISOString(), finished_at: new Date().toISOString(),
     depth: 18, multipv: 3, engine: 'Stockfish 19', engine_source: 'backend',
   },
   {
-    id: 'job-running', source: 'chesscom', status: 'running',
+    id: 'job-running', source: 'lichess', status: 'running',
     white: 'rookiefan', black: 'rival', reviewed: 1, total_plies: 4,
     user_id: null, game_id: null, accuracy: null, counts: null,
     created_at: new Date().toISOString(), finished_at: null,
@@ -241,8 +253,7 @@ const CLASSIFIER_STATS = {
 }
 
 export interface BackendMocks {
-  archives: () => object
-  games: () => object
+  games: () => { games: FixtureGame[] }
   reviewSnapshots: () => object[]
   reviewQueue: () => object
   moveGrade: () => object
@@ -251,7 +262,6 @@ export interface BackendMocks {
 }
 
 const DEFAULT_MOCKS: BackendMocks = {
-  archives: () => ({ archives: ['https://api.chess.com/pub/player/rookiefan/games/2026/06'] }),
   games: () => gamesFixture,
   reviewSnapshots: () => REVIEW_SNAPSHOTS,
   reviewQueue: () => REVIEW_QUEUE_ITEMS,
@@ -271,14 +281,20 @@ export async function mockBackend(
   // Playwright matches routes LIFO (last-registered wins). Register general
   // routes first so more-specific ones added after take precedence.
 
-  // General: any chess.com games endpoint (year/month archives)
-  await page.route('**/api.chess.com/pub/player/*/games/**', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mocks.games()) })
+  // Lichess: a user's games as NDJSON (newest first, honouring `max`), and one
+  // game by id as JSON.
+  await page.route('**/lichess.org/api/games/user/**', async (route) => {
+    const max = Number(new URL(route.request().url()).searchParams.get('max') ?? Infinity)
+    const body = mocks.games().games
+      .slice().sort((a, b) => b.end_time - a.end_time).slice(0, max)
+      .map((g) => JSON.stringify(toLichess(g))).join('\n')
+    await route.fulfill({ status: 200, contentType: 'application/x-ndjson', body })
   })
-
-  // Specific: archives list — registered last so it wins over the general handler above
-  await page.route('**/api.chess.com/pub/player/*/games/archives', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mocks.archives()) })
+  await page.route('**/lichess.org/game/export/*', async (route) => {
+    const id = new URL(route.request().url()).pathname.split('/').pop()
+    const game = mocks.games().games.find((g) => g.id === id)
+    if (!game) return route.fulfill({ status: 404, body: '' })
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(toLichess(game)) })
   })
 
   // Async review jobs. POST /reviews submits; GET /reviews/:id returns the next

@@ -1,6 +1,8 @@
 // Provider-neutral game model. Each source adapter maps its raw payload to this.
 
-export type Source = 'chesscom' | 'lichess'
+// A registry key in api/sources (`lichess`, `pgn`, plus whatever `@private`
+// adds). A string, not a union: the public and lab builds have different sets.
+export type Source = string
 
 export interface Player {
   username: string
@@ -19,13 +21,15 @@ export interface Game {
 }
 
 // One provider. listRecent returns at most `limit` most-recent games; fetchGame
-// resolves a single game by its provider id (null if not found).
+// resolves a single game by its provider id (null if not found). `label` is the
+// user-facing name (source toggle, header badge).
 export interface GameSource {
+  label: string
   listRecent(username: string, limit: number, until?: number): Promise<Game[]>
   fetchGame(username: string, id: string): Promise<Game | null>
 }
 
-// The precomputed classifier-vs-chess.com benchmark (GET /stats/classifier).
+// The precomputed classifier-vs-reference-labels benchmark (GET /stats/classifier).
 // Served verbatim from a committed artifact — the field names are the
 // generator's, so no camel-casing layer sits between the two.
 export interface StatsLabel {

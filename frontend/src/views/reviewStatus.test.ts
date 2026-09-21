@@ -4,7 +4,7 @@ import type { ReviewInboxItem } from '../api/analyzer'
 
 function item(overrides: Partial<ReviewInboxItem> = {}): ReviewInboxItem {
   return {
-    id: 'j', source: 'chesscom', status: 'done',
+    id: 'j', source: 'lichess', status: 'done',
     white: 'a', black: 'b', reviewed: 4, totalPlies: 4,
     userId: 'a', gameId: '1', accuracy: 90, createdAt: new Date().toISOString(),
     finishedAt: new Date().toISOString(),

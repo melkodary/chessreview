@@ -3,13 +3,13 @@ import { formatGameDate, parseGameMeta, reviewHighlights } from './gameList.meta
 import type { Game } from '../api/types'
 
 const makeGame = (overrides: Partial<Game> = {}): Game => ({
-  source: 'chesscom',
+  source: 'lichess',
   id: '1',
   white: { username: 'alice', result: 'win', rating: 1500 },
   black: { username: 'bob', result: 'loss', rating: 1480 },
   pgn: '',
   endTime: 1700000000,
-  url: 'https://chess.com/game/1',
+  url: 'https://lichess.org/1',
   ...overrides,
 })
 

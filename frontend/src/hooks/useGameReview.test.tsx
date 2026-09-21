@@ -61,7 +61,7 @@ function renderHarness(pgn: string, gameId?: string) {
 
 function inboxItem(partial: Partial<ReviewInboxItem> & { id: string; status: ReviewInboxItem['status'] }): ReviewInboxItem {
   return {
-    source: 'chesscom', white: 'a', black: 'b', reviewed: 0, totalPlies: 4,
+    source: 'lichess', white: 'a', black: 'b', reviewed: 0, totalPlies: 4,
     userId: null, gameId: 'game-1', accuracy: null,
     createdAt: '2026-01-01T00:00:00Z', finishedAt: null, depth: 20, multipv: 2,
     engine: null, engineSource: 'backend',

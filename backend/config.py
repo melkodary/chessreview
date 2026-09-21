@@ -175,7 +175,7 @@ class Settings(BaseSettings):
         24, description="terminal jobs older than this are deleted on the next insert",
     )
     review_default_source: str = Field(
-        "chess.com", description="origin label stamped on submitted jobs",
+        "unknown", description="origin label stamped on jobs submitted without one",
     )
     queue_acquire_timeout: float = Field(
         0.5, description="queued-worker cancel-check interval (s)",
@@ -374,19 +374,6 @@ class Settings(BaseSettings):
     )
     game_rating_round_step: int = Field(
         50, description="formula-v1 half-up rounding step in Elo",
-    )
-
-    # ── explain_move.py live tier — game fetch (tools/fetch_game.py) ────────
-    chesscom_api_base: str = Field(
-        "https://api.chess.com/pub", description="chess.com API base for the explain_move.py --fetch live tier",
-        json_schema_extra={"section": "explain_move.py live tier — game fetch"},
-    )
-    lichess_api_base: str = Field(
-        "https://lichess.org/api", description="lichess API base for the explain_move.py --fetch live tier",
-    )
-    max_archives: int = Field(
-        12, description="chess.com archive-walk cap for the explain_move.py --fetch live tier "
-                        "(mirrors frontend's VITE_MAX_ARCHIVES)",
     )
 
     @field_validator("allowed_origins", mode="before")

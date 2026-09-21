@@ -1,3 +1,4 @@
+import type { Game } from './api/types'
 import { ANALYSIS_TIME_STEPS, DEFAULT_ANALYSIS_LINES, DEFAULT_ANALYSIS_TIME_MS, DEFAULT_REVIEW_DEPTH, DEFAULT_REVIEW_MULTIPV, ENGINE_HASH_STEPS, ENGINE_HASH_MB, ENGINE_THREADS_CAP, PROVISIONAL_CURVE_DEFAULT } from './config'
 
 export type Theme = 'light' | 'dark'
@@ -15,6 +16,8 @@ export const STORAGE_KEYS = {
   engineHash: 'chessreview-engine-hash',
   provisionalCurve: 'chessreview-provisional-curve',
   settingsTab: 'chessreview-settings-tab',
+  // Games imported as PGN (api/sources/pgn.ts) — the only source with no server.
+  pgnGames: 'chessreview-pgn-games',
 } as const
 
 export type SettingsTab = 'analysis' | 'review'
@@ -55,14 +58,34 @@ function storedSetting<T>(
   parse: (raw: string) => T | undefined,
   serialize: (value: T) => string = String,
 ): StoredSetting<T> {
+  // A blocked store (private window, cleared site data) or a corrupt value
+  // reads as the fallback and writes as a no-op — never a crash.
   return {
     load: () => {
-      const raw = localStorage.getItem(key)
-      return raw === null ? fallback() : (parse(raw) ?? fallback())
+      try {
+        const raw = localStorage.getItem(key)
+        return raw === null ? fallback() : (parse(raw) ?? fallback())
+      } catch {
+        return fallback()
+      }
     },
-    save: (value) => localStorage.setItem(key, serialize(value)),
+    save: (value) => {
+      try {
+        localStorage.setItem(key, serialize(value))
+      } catch {
+        // quota or blocked storage
+      }
+    },
   }
 }
+
+// Games imported as PGN (api/sources/pgn.ts): the whole list, newest first.
+export const PGN_GAMES_STORAGE = storedSetting<Game[]>(
+  STORAGE_KEYS.pgnGames,
+  () => [],
+  (raw) => { const v = JSON.parse(raw); return Array.isArray(v) ? (v as Game[]) : undefined },
+  JSON.stringify,
+)
 
 const numberInRange = (min: number, max: number) => (raw: string) => {
   const value = Number(raw)

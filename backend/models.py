@@ -62,7 +62,7 @@ class CreateReviewRequest(BaseModel):
 
     @model_validator(mode="after")
     def _lowercase_user_id(self):
-        # Chess.com/lichess usernames are case-insensitive; normalize at the one
+        # Usernames are case-insensitive on every source we know; normalize at the one
         # write choke point so persisted rows always match a lowercased lookup.
         if self.user_id is not None:
             self.user_id = self.user_id.lower()

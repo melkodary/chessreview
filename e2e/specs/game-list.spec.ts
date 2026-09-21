@@ -9,9 +9,10 @@ test.beforeEach(async ({ page }) => {
 test('enter username → submit → navigates to game list', async ({ page }) => {
   const list = new GameListPage(page)
   await list.goto()
+  await page.getByRole('button', { name: 'Lichess' }).click()
   await list.enterUsername('rookiefan')
   await list.submit()
-  await expect(page).toHaveURL(/\/rookiefan\/games/)
+  await expect(page).toHaveURL(/\/rookiefan\/games\?source=lichess/)
 })
 
 test('click row navigates to the game viewer', async ({ page }) => {
@@ -29,14 +30,15 @@ test('phone layout contains a long username, opponent, and status', async ({ pag
   await page.setViewportSize({ width: 375, height: 812 })
   await mockBackend(page, {
     games: () => ({ games: [{
-      white: { username, result: 'win', rating: 1500 },
-      black: { username: opponent, result: 'resigned', rating: 1480 },
+      id: gameId,
+      white: { username, rating: 1500 },
+      black: { username: opponent, rating: 1480 },
+      winner: 'white',
       end_time: 1748908800,
-      url: `https://www.chess.com/game/live/${gameId}`,
       pgn: '',
     }] }),
     reviewQueue: () => [{
-      id: 'job-error', source: 'chesscom', status: 'error',
+      id: 'job-error', source: 'lichess', status: 'error',
       white: username, black: opponent, reviewed: 0, total_plies: 2,
       user_id: username, game_id: gameId, accuracy: null,
       created_at: new Date().toISOString(), finished_at: new Date().toISOString(),
@@ -84,14 +86,15 @@ test('phone layout contains a reviewed row with three highlights and the provena
   await page.setViewportSize({ width: 375, height: 812 })
   await mockBackend(page, {
     games: () => ({ games: [{
-      white: { username, result: 'win', rating: 1500 },
-      black: { username: opponent, result: 'resigned', rating: 1480 },
+      id: gameId,
+      white: { username, rating: 1500 },
+      black: { username: opponent, rating: 1480 },
+      winner: 'white',
       end_time: 1748908800,
-      url: `https://www.chess.com/game/live/${gameId}`,
       pgn: '',
     }] }),
     reviewQueue: () => [{
-      id: 'job-done', source: 'chesscom', status: 'done',
+      id: 'job-done', source: 'lichess', status: 'done',
       white: username, black: opponent, reviewed: 40, total_plies: 40,
       user_id: username, game_id: gameId, accuracy: 91.5,
       counts: { best: 12, good: 3, inaccuracy: 2, mistake: 1, blunder: 1, book: 4 },
@@ -125,59 +128,4 @@ test('phone layout contains a reviewed row with three highlights and the provena
   const name = row.getByText(`vs ${opponent}`)
   await expect(name).toHaveCSS('text-overflow', 'ellipsis')
   expect(await name.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true)
-})
-
-test('phone date anchor survives game navigation and expands manually', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  const archivedGames = Array.from({ length: 20 }, (_, i) => ({
-    white: { username: 'historian', result: 'win', rating: 1500 },
-    black: { username: `opponent-${i}`, result: 'resigned', rating: 1480 },
-    end_time: Math.floor(new Date(2020, 2, 29, 12, 0, i).getTime() / 1000),
-    url: `https://www.chess.com/game/live/${1000 + i}`,
-    pgn: '',
-  }))
-  await mockBackend(page, {
-    archives: () => ({ archives: [
-      'https://api.chess.com/pub/player/historian/games/2020/03',
-      'https://api.chess.com/pub/player/historian/games/2020/04',
-    ] }),
-    games: () => ({ games: archivedGames }),
-    reviewQueue: () => [],
-  })
-  const archiveRequests: string[] = []
-  page.on('request', (request) => {
-    if (/\/games\/2020\/(03|04)$/.test(request.url())) archiveRequests.push(request.url())
-  })
-
-  const list = new GameListPage(page)
-  await list.gotoGames('historian')
-  await expect(list.rows()).toHaveCount(10)
-  archiveRequests.length = 0
-
-  await list.openDatePicker()
-  const launcherBounds = await page.getByRole('button', { name: 'Latest ▾' }).boundingBox()
-  const pickerBounds = await list.datePicker().boundingBox()
-  expect(launcherBounds).not.toBeNull()
-  expect(pickerBounds).not.toBeNull()
-  expect(pickerBounds!.y).toBeGreaterThanOrEqual(launcherBounds!.y + launcherBounds!.height)
-  expect(Math.abs(
-    pickerBounds!.x + pickerBounds!.width - launcherBounds!.x - launcherBounds!.width,
-  )).toBeLessThan(2)
-
-  await list.dateInput().fill('2020-03-29')
-  await expect(list.datePicker()).toBeHidden()
-  await expect(page).toHaveURL(/source=chesscom&before=2020-03-29/)
-  await expect(page.getByRole('button', { name: /Through/ })).toBeVisible()
-  await expect(list.rows()).toHaveCount(10)
-  expect(archiveRequests.some((url) => url.endsWith('/games/2020/03'))).toBe(true)
-  expect(archiveRequests.some((url) => url.endsWith('/games/2020/04'))).toBe(false)
-
-  await list.rowAt(0).click()
-  await expect(page).toHaveURL(/\/historian\/games\/\d+\/analyze\?source=chesscom&before=2020-03-29/)
-  await page.getByRole('link', { name: /historian's games/i }).click()
-  await expect(page).toHaveURL(/\/historian\/games\?source=chesscom&before=2020-03-29/)
-  await expect(list.rows()).toHaveCount(10)
-
-  await list.loadMore().click()
-  await expect(list.rows()).toHaveCount(20)
 })

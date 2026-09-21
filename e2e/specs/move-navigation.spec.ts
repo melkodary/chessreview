@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { mockBackend } from '../mocks/backend'
 import { GameViewerPage } from '../pages/GameViewerPage'
-import gamesFixture from '../fixtures/chesscom-games.json' with { type: 'json' }
+import gamesFixture from '../fixtures/games.json' with { type: 'json' }
 
 const USER = 'rookiefan'
 const GAME_ID = '123456789'
@@ -33,7 +33,7 @@ test('ArrowRight advances one move', async ({ page }) => {
 test('?move=N deep-links to ply N and marks the move active', async ({ page }) => {
   const viewer = new GameViewerPage(page)
   // Analysis tab keeps a move list at rest; Review opens on its intro.
-  await page.goto(`/${USER}/games/${GAME_ID}/analyze?move=4`)
+  await page.goto(`/${USER}/games/${GAME_ID}/analyze?source=lichess&move=4`)
   await viewer.board().waitFor()
 
   // Ply 4 means 4 moves played — board is not at starting position
@@ -48,25 +48,25 @@ test('?move=N deep-links to ply N and marks the move active', async ({ page }) =
 
 test('tabs preserve move and mainline navigation replaces browser history', async ({ page }) => {
   const viewer = new GameViewerPage(page)
-  await page.goto(`/${USER}/games/${GAME_ID}/analyze?source=chesscom&move=2`)
+  await page.goto(`/${USER}/games/${GAME_ID}/analyze?source=lichess&move=2`)
   await viewer.board().waitFor()
 
   const reviewTab = page.getByRole('link', { name: 'Review', exact: true })
   await reviewTab.click()
-  await expect(page).toHaveURL(/\/review\?source=chesscom&move=2$/)
+  await expect(page).toHaveURL(/\/review\?source=lichess&move=2$/)
   await expect(reviewTab).toHaveAttribute('aria-current', 'page')
 
   await viewer.nextMove()
-  await expect(page).toHaveURL(/\/review\?source=chesscom&move=3$/)
+  await expect(page).toHaveURL(/\/review\?source=lichess&move=3$/)
 
   await page.goBack()
-  await expect(page).toHaveURL(/\/analyze\?source=chesscom&move=2$/)
+  await expect(page).toHaveURL(/\/analyze\?source=lichess&move=2$/)
 })
 
 test('export controls copy the displayed FEN and original PGN', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   const viewer = new GameViewerPage(page)
-  await page.goto(`/${USER}/games/${GAME_ID}/analyze?move=4`)
+  await page.goto(`/${USER}/games/${GAME_ID}/analyze?source=lichess&move=4`)
   await viewer.board().waitFor()
   const displayedFen = await viewer.board().getAttribute('data-fen')
   expect(displayedFen).not.toBeNull()

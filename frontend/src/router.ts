@@ -8,7 +8,7 @@ export function extractGameId(url: string): string {
 const enc = encodeURIComponent
 
 // Merge route context into a query string. Source is
-// always explicit, even for the chesscom default, so the URI is unambiguous.
+// always explicit, even for the default, so the URI is unambiguous.
 function query(source: Source, before?: string, move?: number): string {
   const p = new URLSearchParams()
   p.set('source', source)

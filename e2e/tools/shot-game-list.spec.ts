@@ -13,7 +13,7 @@ const PREFIX = process.env.SHOT_PREFIX ?? 'shot'
 const WIDTH = Number(process.env.SHOT_W ?? 390)
 const HEIGHT = Number(process.env.SHOT_H ?? 667)
 
-// SHOT_MODE=light|dark picks the persisted mode; SHOT_SKIN=terminal|slate|midnight|chesscom
+// SHOT_MODE=light|dark picks the persisted mode; SHOT_SKIN=terminal (the one skin)
 // overlays that skin's palette (the skin is compile-time in the app, so the
 // harness paints it in after load to preview per-skin tokens).
 const MODE = (process.env.SHOT_MODE ?? 'dark') as 'light' | 'dark'
@@ -25,14 +25,15 @@ test.use({ viewport: { width: WIDTH, height: HEIGHT } })
 
 test('shot game list', async ({ page }) => {
   const game = (id: number, opponent: string) => ({
-    white: { username: USER, result: 'win', rating: 1500 },
-    black: { username: opponent, result: 'resigned', rating: 1480 },
+    id: String(id),
+    white: { username: USER, rating: 1500 },
+    black: { username: opponent, rating: 1480 },
+    winner: 'white' as const,
     end_time: 1748908800 - id,
-    url: `https://www.chess.com/game/live/${id}`,
     pgn: '',
   })
   const job = (id: number, extra: object) => ({
-    id: `job-${id}`, source: 'chesscom', status: 'done',
+    id: `job-${id}`, source: 'lichess', status: 'done',
     white: USER, black: 'x', reviewed: 40, total_plies: 40,
     user_id: USER, game_id: String(id), accuracy: 91.5,
     created_at: new Date().toISOString(), finished_at: new Date().toISOString(),

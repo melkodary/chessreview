@@ -18,13 +18,13 @@ vi.mock('../api/analyzer', () => ({
 
 function game(): Game {
   return {
-    source: 'chesscom',
+    source: 'lichess',
     id: '1',
     white: { username: 'alice', result: 'win', rating: 1500 },
     black: { username: 'bob', result: 'loss', rating: 1400 },
     pgn: '1. e4 e5 *',
     endTime: 0,
-    url: 'https://www.chess.com/game/live/1',
+    url: 'https://lichess.org/1',
   }
 }
 
@@ -61,7 +61,7 @@ const summary: ReviewSummary = {
 function fakeDone() {
   vi.mocked(analyzer.createReview).mockResolvedValue({ id: 'job-1', status: 'queued' })
   vi.mocked(analyzer.getReview).mockResolvedValue({
-    id: 'job-1', source: 'chesscom', status: 'done',
+    id: 'job-1', source: 'lichess', status: 'done',
     white: 'alice', black: 'bob', reviewed: 1, totalPlies: 2,
     userId: null, gameId: '1', accuracy: 50,
     createdAt: '2026-01-01T00:00:00Z', finishedAt: '2026-01-01T00:00:01Z',

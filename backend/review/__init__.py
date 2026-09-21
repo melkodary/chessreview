@@ -107,7 +107,7 @@ def _parse_pgn_or_raise(pgn: str) -> tuple[chess.pgn.Game, list[chess.Move]]:
 
 def _resolve_elo(explicit: int | None, game: chess.pgn.Game, tag: str) -> int:
     """One color's rating: an explicit request-field override, else the PGN's
-    Elo tag (ignoring non-numeric values like chess.com's "?"), else the
+    Elo tag (ignoring non-numeric values like "?"), else the
     default 1000 (review/expected.py:k_for's low bucket)."""
     if explicit is not None:
         return explicit

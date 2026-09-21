@@ -16,9 +16,7 @@ const bool = (raw: string | undefined, fallback: boolean): boolean => {
 }
 
 export const API_BASE               = env(import.meta.env.VITE_API_BASE)          ?? 'http://localhost:8000'
-export const CHESSCOM_API_BASE      = env(import.meta.env.VITE_CHESSCOM_API_BASE) ?? 'https://api.chess.com/pub'
 export const LICHESS_API_BASE       = env(import.meta.env.VITE_LICHESS_API_BASE)  ?? 'https://lichess.org'
-export const MAX_ARCHIVES           = num(import.meta.env.VITE_MAX_ARCHIVES, 12)
 export const GAMES_PAGE_SIZE        = num(import.meta.env.VITE_GAMES_PAGE_SIZE, 10)
 export const DEFAULT_REVIEW_DEPTH   = num(import.meta.env.VITE_DEFAULT_REVIEW_DEPTH, 18)
 export const DEFAULT_REVIEW_MULTIPV = num(import.meta.env.VITE_DEFAULT_REVIEW_MULTIPV, 2)

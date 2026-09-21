@@ -16,13 +16,13 @@ vi.mock('../api/analyzer', () => ({
 
 function fakeGame(): Game {
   return {
-    source: 'chesscom',
+    source: 'lichess',
     id: '1',
     white: { username: 'alice', result: 'win', rating: 1500 },
     black: { username: 'bob', result: 'loss', rating: 1400 },
     pgn: '',
     endTime: 0,
-    url: 'https://www.chess.com/game/live/1',
+    url: 'https://lichess.org/1',
   }
 }
 

@@ -166,7 +166,7 @@ def test_resolve_ratings_missing_tags_default_1000():
 
 
 def test_resolve_ratings_non_numeric_tag_ignored():
-    """chess.com stamps '?' for unrated sides — must fall through to 1000,
+    """Some sites stamp '?' for unrated sides — must fall through to 1000,
     not crash."""
     game = _game_with_headers(WhiteElo="?", BlackElo="1875")
     assert _resolve_ratings(game, None, None) == (1000, 1875)

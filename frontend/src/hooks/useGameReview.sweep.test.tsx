@@ -61,7 +61,7 @@ function cacheGame(depth: number, multipv: number) {
 
 function doneSnapshot(): ReviewSnapshot {
   return {
-    id: 'job-1', source: 'chesscom', status: 'done', white: 'a', black: 'b',
+    id: 'job-1', source: 'lichess', status: 'done', white: 'a', black: 'b',
     reviewed: 2, totalPlies: 2, userId: null, gameId: 'g1', accuracy: 90,
     createdAt: '', finishedAt: '', depth: 20, multipv: 3, engine: WASM_ENGINE_NAME,
     moves: [],

@@ -158,7 +158,7 @@ def test_inbox_lists_jobs_without_moves_array(client):
 def test_inbox_carries_game_coords_for_deep_link(client):
     job_id = client.post(
         "/reviews",
-        json={"pgn": PGN, "source": "chesscom", "user_id": "alice", "game_id": "42"},
+        json={"pgn": PGN, "source": "lichess", "user_id": "alice", "game_id": "42"},
     ).json()["id"]
     assert _wait_done(client, job_id)
     row = client.get("/reviews").json()[0]
@@ -202,7 +202,7 @@ def test_rest_counts_null_for_legacy_summary_without_counts(client, monkeypatch)
 def test_user_id_persisted_and_filtered_case_insensitively(client):
     job_id = client.post(
         "/reviews",
-        json={"pgn": PGN, "source": "chesscom", "user_id": "Alice", "game_id": "42"},
+        json={"pgn": PGN, "source": "lichess", "user_id": "Alice", "game_id": "42"},
     ).json()["id"]
     assert _wait_done(client, job_id)
     row = client.get("/reviews").json()[0]
@@ -279,7 +279,7 @@ def test_delete_missing_returns_404(client):
 def test_create_review_returns_429_when_store_full(client, monkeypatch):
     full_store = store_mod.ephemeral_store(maxsize=1, ttl_hours=24)
     job = full_store.create(
-        source="chess.com", pgn=PGN, depth=22, multipv=3,
+        source="lichess", pgn=PGN, depth=22, multipv=3,
         pgn_hash="occupied", white="A", black="B", total_plies=2,
     )
     full_store.finish(job.id, {"white": {"accuracy": 90.0}})  # terminal, fresh
@@ -297,7 +297,7 @@ def test_create_review_rejects_overlong_meta_fields(client):
 
 def test_list_reviews_filters_by_source_and_user_id(client):
     a = client.post(
-        "/reviews", json={"pgn": PGN, "source": "chess.com", "user_id": "alice"},
+        "/reviews", json={"pgn": PGN, "source": "pgn", "user_id": "alice"},
     ).json()["id"]
     assert _wait_done(client, a)
     b = client.post(
@@ -306,18 +306,18 @@ def test_list_reviews_filters_by_source_and_user_id(client):
     assert _wait_done(client, b)
 
     assert {r["id"] for r in client.get("/reviews").json()} == {a, b}
-    assert {r["id"] for r in client.get("/reviews", params={"source": "chess.com"}).json()} == {a}
+    assert {r["id"] for r in client.get("/reviews", params={"source": "pgn"}).json()} == {a}
     assert {r["id"] for r in client.get("/reviews", params={"user_id": "bob"}).json()} == {b}
     assert client.get("/reviews", params={"source": "lichess", "user_id": "alice"}).json() == []
 
 
 def test_list_reviews_filters_by_game_id(client):
     a = client.post(
-        "/reviews", json={"pgn": PGN, "source": "chess.com", "user_id": "alice", "game_id": "g1"},
+        "/reviews", json={"pgn": PGN, "source": "lichess", "user_id": "alice", "game_id": "g1"},
     ).json()["id"]
     assert _wait_done(client, a)
     b = client.post(
-        "/reviews", json={"pgn": PGN, "source": "chess.com", "user_id": "alice", "game_id": "g2", "force": True},
+        "/reviews", json={"pgn": PGN, "source": "lichess", "user_id": "alice", "game_id": "g2", "force": True},
     ).json()["id"]
     assert _wait_done(client, b)
 
@@ -325,5 +325,5 @@ def test_list_reviews_filters_by_game_id(client):
     assert {r["id"] for r in client.get("/reviews", params={"game_id": "g2"}).json()} == {b}
     assert client.get("/reviews", params={"game_id": "nope"}).json() == []
     assert {r["id"] for r in client.get(
-        "/reviews", params={"source": "chess.com", "user_id": "alice", "game_id": "g1"},
+        "/reviews", params={"source": "lichess", "user_id": "alice", "game_id": "g1"},
     ).json()} == {a}

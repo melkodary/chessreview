@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { DEFAULT_SOURCE, SOURCES } from '../api/sources'
 import type { Source } from '../api/types'
+import PgnImport from './PgnImport'
 import styles from './UsernameInput.module.css'
 
 interface Props {
@@ -8,14 +10,9 @@ interface Props {
   latestLoading: boolean
 }
 
-const SOURCES: { value: Source; label: string }[] = [
-  { value: 'chesscom', label: 'Chess.com' },
-  { value: 'lichess', label: 'Lichess' },
-]
-
 export default function UsernameInput({ onSubmit, onReviewLatest, latestLoading }: Props) {
   const [username, setUsername] = useState('')
-  const [source, setSource] = useState<Source>('chesscom')
+  const [source, setSource] = useState<Source>(DEFAULT_SOURCE)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,23 +26,26 @@ export default function UsernameInput({ onSubmit, onReviewLatest, latestLoading 
     <div className={styles.card}>
         <h1 className={styles.title}>♟ Chess Review</h1>
         <p className={styles.subtitle}>
-          Enter your {source === 'lichess' ? 'Lichess' : 'Chess.com'} username to review your games.
+          {source === 'pgn'
+            ? 'Paste or upload a PGN to review the game.'
+            : `Enter your ${SOURCES[source].label} username to review your games.`}
         </p>
 
         <div className={styles.sourceToggle} role="group" aria-label="Game source">
-          {SOURCES.map((s) => (
+          {Object.entries(SOURCES).map(([value, s]) => (
             <button
-              key={s.value}
+              key={value}
               type="button"
-              onClick={() => setSource(s.value)}
-              aria-pressed={source === s.value}
-              className={`${styles.sourceBtn} ${source === s.value ? styles.sourceBtnActive : ''}`}
+              onClick={() => setSource(value)}
+              aria-pressed={source === value}
+              className={`${styles.sourceBtn} ${source === value ? styles.sourceBtnActive : ''}`}
             >
               {s.label}
             </button>
           ))}
         </div>
 
+        {source === 'pgn' ? <PgnImport /> : (
         <form onSubmit={handleSubmit}>
           <input
             type="text"
@@ -70,6 +70,7 @@ export default function UsernameInput({ onSubmit, onReviewLatest, latestLoading 
             </button>
           </div>
         </form>
+        )}
       </div>
   )
 }

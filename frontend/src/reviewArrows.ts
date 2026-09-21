@@ -5,7 +5,7 @@ import { tryMove } from './chessMove'
 /**
  * The best move as a single arrow ("what should have been played").
  * We intentionally do NOT draw the played move — an arrow on the move you
- * actually made reads as a threat/attack indicator (chess.com semantics) and
+ * actually made reads as a threat/attack indicator (the convention elsewhere) and
  * is confusing. The played square is already marked by the classification badge.
  */
 export function reviewArrows(m: MoveReview, bestColor: string): Arrow[] {

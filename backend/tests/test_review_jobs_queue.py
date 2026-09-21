@@ -32,7 +32,7 @@ def _seed(store, pgn_hash, *, status, moves=None):
     (it aliased live state only under the dict store this replaced).
     """
     job = store.create(
-        source="chess.com", pgn=PGN, depth=22, multipv=3, pgn_hash=pgn_hash,
+        source="lichess", pgn=PGN, depth=22, multipv=3, pgn_hash=pgn_hash,
         white="Alice", black="Bob", total_plies=3,
     )
     if status == "queued":

@@ -12,7 +12,7 @@ describe('getReview', () => {
       ok: true,
       json: async () => ({
         id: 'job/7',
-        source: 'chesscom',
+        source: 'lichess',
         status: 'done',
         white: 'Alice',
         black: 'Bob',
@@ -58,7 +58,7 @@ describe('getReview', () => {
 
     expect(review).toEqual({
       id: 'job/7',
-      source: 'chesscom',
+      source: 'lichess',
       status: 'done',
       white: 'Alice',
       black: 'Bob',
@@ -117,7 +117,7 @@ describe('listReviews', () => {
 
   it('maps inbox counts and keeps null as null', async () => {
     const row = {
-      id: 'j', source: 'chesscom', status: 'done', white: 'Alice', black: 'Bob',
+      id: 'j', source: 'lichess', status: 'done', white: 'Alice', black: 'Bob',
       reviewed: 2, total_plies: 2, user_id: 'alice', game_id: '1', accuracy: 90,
       created_at: '2026-07-31T12:00:00Z', finished_at: null,
       depth: 18, multipv: 2, engine: null, engine_source: 'backend',
