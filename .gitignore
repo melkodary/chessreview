@@ -55,3 +55,6 @@ CLAUDE.md
 /frontend/src/private
 /e2e/specs/private
 /e2e/private
+
+# Playwright writes its run output here (e2e/playwright.config.ts outputDir).
+test-results/
