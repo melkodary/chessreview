@@ -1,4 +1,4 @@
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 
 ARG VITE_API_BASE
 ARG VITE_DEFAULT_ANALYSIS_TIME_MS
