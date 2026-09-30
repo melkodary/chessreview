@@ -1,5 +1,6 @@
 import { engine } from './stockfish'
 import { getEval, putEval, type CachedPosition } from './evalCache'
+import { ENGINE_DEPTH_TIMEOUT_MS } from '../config'
 
 // Return an eval for `fen` at depth >= `depth` with >= `multipv` lines: a cached
 // one when the eval bar (or an earlier grade) already searched it that deep and
@@ -12,9 +13,11 @@ import { getEval, putEval, type CachedPosition } from './evalCache'
 // is what lets a branch ply be graded in the browser and still match what the
 // backend would have produced. A time budget cannot promise it.
 //
-// Resolves null on abort (latest-wins supersede) or an engine boot failure
-// (no SharedArrayBuffer / worker error) — the caller then omits the eval payload
-// so the backend searches instead (guaranteed parity).
+// Resolves null on abort (latest-wins supersede), an engine boot failure
+// (no SharedArrayBuffer / worker error) or a search stuck short of `depth` past
+// ENGINE_DEPTH_TIMEOUT_MS — the caller then omits the eval payload so the
+// backend searches instead (guaranteed parity; a `stop` would hand back a
+// shallower eval and break it).
 export function ensureEval(
   fen: string,
   depth: number,
@@ -26,18 +29,23 @@ export function ensureEval(
   if (signal.aborted) return Promise.resolve(null)
 
   return new Promise((resolve) => {
+    // Our own signal, so a timeout stops this search and not whichever is current.
+    const search = new AbortController()
+    const timer = setTimeout(() => search.abort(), ENGINE_DEPTH_TIMEOUT_MS)
     let settled = false
     const done = (v: CachedPosition | null) => {
       if (settled) return
       settled = true
+      clearTimeout(timer)
       resolve(v)
     }
-    signal.addEventListener('abort', () => done(null))
+    signal.addEventListener('abort', () => search.abort())
+    search.signal.addEventListener('abort', () => done(null))
     engine
       .analyze(fen, { kind: 'depth', depth }, multipv, (lines, d) => {
         putEval(fen, lines, d, multipv)
         if (d >= depth) done({ lines, depth: d, multipv })
-      }, signal)
+      }, search.signal)
       .catch(() => done(null)) // boot failure → BE fallback
   })
 }

@@ -6,6 +6,7 @@ vi.mock('./stockfish', () => ({ engine: { analyze: vi.fn() } }))
 import { engine } from './stockfish'
 import { ensureEval } from './ensureEval'
 import { putEval, clearEvalCache } from './evalCache'
+import { ENGINE_DEPTH_TIMEOUT_MS } from '../config'
 
 const mockAnalyze = vi.mocked(engine.analyze)
 
@@ -72,6 +73,21 @@ describe('ensureEval', () => {
   it('resolves null on an engine boot failure (→ backend fallback)', async () => {
     mockAnalyze.mockRejectedValue(new Error('no SharedArrayBuffer'))
     expect(await ensureEval('boom', 18, 3, fresh())).toBeNull()
+  })
+
+  it('gives up a search stuck short of depth (→ backend fallback) and stops it', async () => {
+    vi.useFakeTimers()
+    let searchSignal: AbortSignal | undefined
+    mockAnalyze.mockImplementation((_fen, _limit, _mpv, onLines, s) => {
+      searchSignal = s
+      onLines([line(0, ['h7h8q'])], 14, false) // stalls at 14, never reaches 18
+      return Promise.resolve()
+    })
+    const r = ensureEval('stuck', 18, 3, fresh())
+    await vi.advanceTimersByTimeAsync(ENGINE_DEPTH_TIMEOUT_MS)
+    expect(await r).toBeNull()
+    expect(searchSignal?.aborted).toBe(true)
+    vi.useRealTimers()
   })
 
   it('resolves null without searching when the signal is already aborted', async () => {

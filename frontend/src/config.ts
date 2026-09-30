@@ -34,6 +34,9 @@ export const ENGINE_HASH_MB         = num(import.meta.env.VITE_ENGINE_HASH_MB, 6
 export const ENGINE_HASH_STEPS      = [16, 32, 64, 128, 256, 512]
 export const ENGINE_PV_DEPTH        = num(import.meta.env.VITE_ENGINE_PV_DEPTH, 12)
 export const ENGINE_BOOT_TIMEOUT_MS = num(import.meta.env.VITE_ENGINE_BOOT_TIMEOUT_MS, 10_000)
+// A depth-limited WASM search that has not reached its depth by now is given up
+// (→ backend fallback): the 19 lite build can stall short of depth with a warm hash.
+export const ENGINE_DEPTH_TIMEOUT_MS = num(import.meta.env.VITE_ENGINE_DEPTH_TIMEOUT_MS, 30_000)
 
 // Analysis searches on a wall-clock budget, not a depth target — depth is an
 // output (the badge), never an input. Steps in seconds; the setting persists ms.
