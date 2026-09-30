@@ -10,4 +10,5 @@ Emscripten build: https://github.com/nmrugg/stockfish.js at commit
 sha512-jDyYLbqNpboQcMs5HodTHI2CrKL74zkQWb1+sgoNXw5HI6avTblW4G0X7afFt3BBOc6VbTSkOV64EUxm/DWSpg==).
 Upstream engine: https://github.com/official-stockfish/Stockfish
 
-This repository is also GPLv3 (`/LICENSE`). See `/THIRD_PARTY_NOTICES.md`.
+Chess Review itself is also GPLv3. Source, license and third-party notices:
+https://github.com/melkodary/chessreview
