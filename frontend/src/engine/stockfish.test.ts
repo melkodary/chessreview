@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AnalysisLine } from '../api/analyzer'
-import { ANALYSIS_DEPTH_CEILING } from '../config'
+import { ANALYSIS_DEPTH_CEILING, ENGINE_THREADS_CAP } from '../config'
 import type { SearchLimit } from './stockfish'
 
 // Minimal Worker mock: captures posted commands, lets the test drive the UCI
@@ -134,7 +134,8 @@ describe('engine status', () => {
     await analyzePromise
     expect(engine.getStatus().state).toBe('ready')
 
-    engine.configure({ threads: 4 })
+    // Above the cap, so it differs from the core-derived default on any runner.
+    engine.configure({ threads: ENGINE_THREADS_CAP + 1 })
     expect(engine.getStatus().state).toBe('idle')
   })
 
