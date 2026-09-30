@@ -5,6 +5,8 @@
 
 Analyze your Lichess games — or any PGN — with Stockfish. Step through moves with live engine lines, or queue a full game review — every move classified (Brilliant → Blunder), accuracy scores, opening ID, and a coach-style tip per move. Reviews run in the background; queue one from your games list and check back from the home dashboard.
 
+![Reviewing Morphy's Opera Game (1858): paste the PGN, run the review, step through the classified moves](docs/review.gif)
+
 **Stack:** FastAPI + python-chess backend (runs game reviews — a short-lived pool of Stockfish processes per review) · React + TypeScript + Vite frontend (live analysis runs Stockfish right in your browser via WASM) · Playwright for e2e.
 
 ---
