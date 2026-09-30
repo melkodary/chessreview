@@ -1,8 +1,9 @@
 # Elite opening book
 
-- Source: official Lichess broadcast database
-- Source license: Creative Commons CC0 1.0 (https://database.lichess.org/)
-- License and downloads: https://database.lichess.org/
+- Source: official Lichess broadcast database, by Lichess and broadcast contributors
+- Source license: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+- Derived book license: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+- License and downloads: https://database.lichess.org/#broadcasts
 - Generated UTC: 2026-07-27T19:15:23.913829+00:00
 - Generator: `backend/tools/generate_opening_book.py`
 - Arguments: `--max-depth 20 --min-count 25`
@@ -27,5 +28,12 @@ is continuation frequency in the pinned broadcast corpus capped at 65,535;
 runtime uses membership, not weight. ECO/name data remains sourced from the
 vendored CC0 TSV files.
 
-`elite.bin` is derived database material. Lichess releases its database exports
-under CC0, so the book carries no license terms beyond this provenance note.
+`elite.bin` is derived database material, distributed under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). This license
+applies to the book, not Chessreview's separately licensed code or CC0 ECO data.
+
+Changes by Chessreview: retain only mainline position/move pairs from the first
+20 plies of valid games, aggregate continuation frequencies, drop pairs
+occurring fewer than 25 times, and encode the result as Polyglot records.
+Player details, PGN headers, annotations, and variations are not retained.
+The source and derived book are provided without warranties; see the license.

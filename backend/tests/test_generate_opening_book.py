@@ -3,6 +3,7 @@ import io
 import struct
 import sys
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 
 import chess
@@ -13,6 +14,29 @@ BACKEND = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND / "tools"))
 
 import generate_opening_book as generator  # noqa: E402
+
+
+def test_provenance_preserves_broadcast_license_and_attribution():
+    notice = generator.provenance_text(
+        destination=Path("elite.bin"),
+        records=[],
+        games=0,
+        skipped=0,
+        digest=hashlib.sha256(b"").hexdigest(),
+        sources=generator.DEFAULT_SOURCES,
+        max_depth=20,
+        min_count=25,
+        generated_at=datetime(2026, 7, 27, tzinfo=timezone.utc),
+    )
+    committed = (BACKEND / "openings" / "ELITE_BOOK.md").read_text()
+    for text in (notice, committed):
+        assert "by Lichess and broadcast contributors" in text
+        assert "- Source license: [CC BY-SA 4.0]" in text
+        assert "- Derived book license: [CC BY-SA 4.0]" in text
+        assert "https://creativecommons.org/licenses/by-sa/4.0/" in text
+        assert "Changes by Chessreview:" in text
+        assert "vendored CC0 TSV files" in text
+        assert "book carries no license terms" not in text
 
 
 def test_generated_records_are_sorted_valid_and_weights_are_capped(tmp_path):

@@ -32,12 +32,17 @@ their own licenses. Not affiliated with or endorsed by Lichess.
 `backend/` is GPLv3: a Python program importing a GPL module is a combined
 work. https://github.com/niklasf/python-chess
 
-## Opening data (Lichess, CC0)
+## Opening data (Lichess, CC0 and CC BY-SA 4.0)
 
-- `backend/openings/*.tsv`, `eco.json.gz` — https://github.com/lichess-org/chess-openings.
+- `backend/openings/*.tsv`, `eco.json.gz` — CC0 / public domain,
+  https://github.com/lichess-org/chess-openings.
 - `backend/openings/elite.bin` — derived from the Lichess broadcast database
-  (https://database.lichess.org/, exports released under CC0); provenance and
-  pinned inputs in `backend/openings/ELITE_BOOK.md`.
+  by Lichess and broadcast contributors (https://database.lichess.org/#broadcasts).
+  The broadcasts and derived book are licensed under
+  [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+  Attribution, transformation details, and pinned inputs are retained in
+  `backend/openings/ELITE_BOOK.md`, which ships with the book in the backend image.
+  This data license does not replace the application's code licenses.
 
 ## Chess piece graphics (BSD-3-Clause)
 
