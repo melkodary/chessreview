@@ -4,7 +4,7 @@ import { importPgn } from '../api/sources/pgn'
 import { routes } from '../router'
 import styles from './UsernameInput.module.css'
 
-// Paste or upload a PGN, pick the side to review, land on its review page. The
+// Paste a PGN, pick the side to review, land on its review page. The
 // side's player name becomes the URL's userId — GameShell picks the reviewed
 // side by matching it against white/black.
 export default function PgnImport() {
@@ -12,10 +12,6 @@ export default function PgnImport() {
   const [text, setText] = useState('')
   const [side, setSide] = useState<'white' | 'black'>('white')
   const [error, setError] = useState<string | null>(null)
-
-  const onFile = (file: File | undefined) => {
-    if (file) file.text().then(setText)
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,13 +33,6 @@ export default function PgnImport() {
         className={styles.input}
         rows={6}
         autoFocus
-      />
-      <input
-        type="file"
-        accept=".pgn,text/plain"
-        aria-label="PGN file"
-        onChange={(e) => onFile(e.target.files?.[0])}
-        className={styles.input}
       />
       <div className={styles.actions}>
         <div className={styles.sideToggle} role="group" aria-label="Review as">
