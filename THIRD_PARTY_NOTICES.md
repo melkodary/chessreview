@@ -50,6 +50,13 @@ multi-license. Notice: `frontend/public/licenses/BSD-3-Clause-cburnett.txt`
 
 Everything else is MIT / ISC / BSD / Apache-2.0 / BlueOak-1.0.0 / PSF, plus
 build-time only MPL-2.0 (lightningcss) and CC-BY-4.0 (caniuse-lite data).
-Licenses ship inside the packages in `node_modules/` and the Python virtualenv.
+The frontend build automatically collects production npm dependencies' copyright
+notices and license texts into `dist/licenses/THIRD_PARTY.txt`, served at
+`/licenses/THIRD_PARTY.txt` and included in the frontend Docker image. The
+generator uses npm's installed production dependency tree, including transitive
+code prebundled by upstream packages; there is no manually maintained dependency
+list. Builds fail if a package has no license text. Vendored Stockfish and Cburnett
+graphics retain the separate notices described above. Python dependency
+licenses ship inside their installed packages in the backend image.
 No fonts or icon sets are bundled: the UI uses the system monospace stack and
 hand-drawn classification glyphs.

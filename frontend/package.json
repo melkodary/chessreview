@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/licenses.mjs",
     "lint": "eslint . src/private --no-error-on-unmatched-pattern",
     "lint:css": "stylelint \"src/**/*.css\"",
     "preview": "vite preview",

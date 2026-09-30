@@ -19,6 +19,11 @@ const privateDir = process.env.VITE_PRIVATE_DIR
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rolldownOptions: {
+      output: { postBanner: '/*! Third-party licenses: /licenses/THIRD_PARTY.txt */' },
+    },
+  },
   resolve: {
     alias: { '@private': fileURLToPath(new URL(privateDir, import.meta.url)) },
     // src/private may be a symlink into an out-of-tree overlay; its relative
