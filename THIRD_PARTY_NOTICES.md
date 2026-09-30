@@ -1,8 +1,8 @@
 # Third-party notices
 
-Chess Review's own code is MIT (`LICENSE`) except `backend/`, which is GPLv3
-(`backend/LICENSE`). The components below are included or depended on under
-their own licenses. Not affiliated with or endorsed by Lichess.
+Chess Review is licensed under the GNU GPLv3 (`LICENSE`). The components below
+are included or depended on under their own licenses. Not affiliated with or
+endorsed by Lichess.
 
 ## Stockfish (GPLv3)
 
@@ -19,18 +19,13 @@ their own licenses. Not affiliated with or endorsed by Lichess.
   `54fde71d90c7c403964f6cacef48f7bbec495df1`. That commit is the Corresponding
   Source, including the Emscripten build scripts; `stockfish.worker.js` is a
   byte-identical copy of the `.js` under the worker's entry name.
-- The engine runs in a Web Worker and is driven purely by UCI text over
-  `postMessage`, the same protocol boundary as the server process. We treat
-  that as an arm's-length boundary, so the page's own code stays MIT. MIT is
-  GPL-compatible, so nothing changes for you if you read the boundary
-  differently.
-- License text: `frontend/public/engine/COPYING.txt` (also `backend/LICENSE`).
+- License text: `LICENSE` (copied beside the engine as
+  `frontend/public/engine/COPYING.txt`).
 
 ## python-chess (GPLv3+)
 
-`backend/` imports `chess` for board logic and engine I/O. This is why
-`backend/` is GPLv3: a Python program importing a GPL module is a combined
-work. https://github.com/niklasf/python-chess
+`backend/` imports `chess` for board logic and engine I/O.
+https://github.com/niklasf/python-chess
 
 ## Opening data (Lichess, CC0 and CC BY-SA 4.0)
 

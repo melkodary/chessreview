@@ -1,7 +1,7 @@
 # Chess Review
 
 ![CI](https://github.com/melkodary/chessreview/actions/workflows/ci.yml/badge.svg)
-![License](https://img.shields.io/badge/license-MIT%20%2B%20GPLv3-blue.svg)
+![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
 
 Analyze your Lichess games — or any PGN — with Stockfish. Step through moves with live engine lines, or queue a full game review — every move classified (Brilliant → Blunder), accuracy scores, opening ID, and a coach-style tip per move. Reviews run in the background; queue one from your games list and check back from the home dashboard.
 
@@ -72,7 +72,5 @@ cd e2e && yarn e2e:install && yarn e2e   # first run only installs Chromium; nee
 
 ## License
 
-MIT for `frontend/`, `e2e/`, `docker/`, `scripts/` (`LICENSE`); **GPLv3 for
-`backend/`** (`backend/LICENSE`) because it depends on python-chess. Stockfish,
-opening data and piece graphics carry their own licenses — see
-`THIRD_PARTY_NOTICES.md`.
+Copyright (C) 2026 Mahmoud ElKodary. GNU GPLv3 (`LICENSE`). Opening data and
+piece graphics carry their own licenses — see `THIRD_PARTY_NOTICES.md`.

@@ -10,6 +10,4 @@ Emscripten build: https://github.com/nmrugg/stockfish.js at commit
 sha512-jDyYLbqNpboQcMs5HodTHI2CrKL74zkQWb1+sgoNXw5HI6avTblW4G0X7afFt3BBOc6VbTSkOV64EUxm/DWSpg==).
 Upstream engine: https://github.com/official-stockfish/Stockfish
 
-This repository's own frontend code is MIT-licensed (`/LICENSE`). The engine
-runs in a Web Worker and is driven purely by UCI text over `postMessage`; we
-treat that as an arm's-length boundary. See `/THIRD_PARTY_NOTICES.md`.
+This repository is also GPLv3 (`/LICENSE`). See `/THIRD_PARTY_NOTICES.md`.
