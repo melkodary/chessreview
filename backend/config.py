@@ -312,16 +312,13 @@ class Settings(BaseSettings):
         5, description="...to at least this many moves while the mover still has forced mate",
     )
 
-    # ── Accuracy — fitted to the reference corpus (lab experiments 019, 031) ────
+    # ── Accuracy — fitted to the reference corpus (lab experiments 019, 031, 104) ────
     # The curve and the aggregator are both measurements, not choices; the model
     # is in review/summary.py.
     # B=1 and C=200 collapse the form to a plain 200*exp(-A*d) - 100 — the general
     # shape is exposed only so a refit stays a config change, not a code change.
     #
-    # Three constraints a reader cannot recover from the values:
-    #
-    # ACCURACY_K == RATING_K_MIN == 0.0025 is a COINCIDENCE. Different objectives,
-    # different cohorts. Nothing may couple them.
+    # Two constraints a reader cannot recover from the values:
     #
     # NOT curve-coupled to RATING_K_* since 2026-07-26 (experiment 031): the
     # `drop` this curve reads is its OWN, computed at ACCURACY_K, not the
@@ -329,16 +326,18 @@ class Settings(BaseSettings):
     #
     # A and ACCURACY_K are FITTED TOGETHER and are meaningless apart. Moving one
     # without refitting the other is not a supported configuration.
+    # Also coupled to OUR engine: 104 refit the pair on Stockfish 19 evals (was
+    # 0.0025/0.06 on 18), whose scores run larger — a lower k compresses them back.
     accuracy_k: float = Field(
-        0.0025, description="win-chance sigmoid steepness the ACCURACY model reads — rating-BLIND, "
-                            "unlike RATING_K_*. Coupled to the engine behind the reference corpus "
-                            "(0.00248 on the current batch, 0.0021 on the older stockfish16.1 one), so it "
-                            "needs a refit when that changes. Fitted jointly with ACCURACY_CURVE_A",
-        json_schema_extra={"section": "Accuracy — fitted to the reference corpus (lab experiments 019, 031)"},
+        0.0018, description="win-chance sigmoid steepness the ACCURACY model reads — rating-BLIND, "
+                            "unlike RATING_K_*. Coupled to both engines: the reference corpus's and the "
+                            "shipped Stockfish (fitted on Stockfish 19), so it needs a refit when either "
+                            "changes. Fitted jointly with ACCURACY_CURVE_A",
+        json_schema_extra={"section": "Accuracy — fitted to the reference corpus (lab experiments 019, 031, 104)"},
     )
     accuracy_curve_a: float = Field(
-        0.06, description="accuracy curve decay: acc = C*exp(-A*drop^B) - (C-100); "
-                          "fitted jointly with ACCURACY_K — re-run lab experiment 031 if you touch either",
+        0.064, description="accuracy curve decay: acc = C*exp(-A*drop^B) - (C-100); "
+                          "fitted jointly with ACCURACY_K — re-run lab experiment 104 if you touch either",
     )
     accuracy_curve_b: float = Field(
         1.0, description="accuracy curve drop exponent (1.0 = a plain exponential)",
