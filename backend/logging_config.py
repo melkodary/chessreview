@@ -1,6 +1,6 @@
 import logging
 
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger.json import JsonFormatter
 
 from config import LOG_LEVEL
 
@@ -9,7 +9,7 @@ def configure_logging() -> None:
     """Root logger emits single-line JSON: timestamp, level, name, message."""
     handler = logging.StreamHandler()
     handler.setFormatter(
-        jsonlogger.JsonFormatter(
+        JsonFormatter(
             "%(asctime)s %(levelname)s %(name)s %(message)s",
             rename_fields={"asctime": "timestamp", "levelname": "level"},
         )
