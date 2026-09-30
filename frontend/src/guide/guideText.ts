@@ -10,14 +10,14 @@ const LABEL: Record<Classification, string> = {
   book: 'still in book',
   forced: 'forced — the only legal move',
   brilliant: 'a brilliant move',
-  great: 'a great move',
+  great: 'a critical move',
   best: 'a strong move',
-  excellent: 'an excellent move',
+  excellent: 'a solid move',
   good: 'a good move',
   inaccuracy: 'an inaccuracy',
   mistake: 'a mistake',
   blunder: 'a blunder',
-  miss: 'a miss',
+  miss: 'a missed chance',
 }
 
 // Mistakes — these name the engine's preferred move.
@@ -30,7 +30,7 @@ export const heuristicGuide: GuideText = {
     if (c === 'book') return `${san} — still in book`
     if (c === 'forced') return `${san} was forced — the only legal move`
     if (c === 'brilliant') return `${san} is a brilliant move`
-    if (c === 'great') return `${san} is a great move`
+    if (c === 'great') return `${san} is a critical move`
     if (san === bestMoveSan) return `${san} is the best move`
 
     const base = `${san} is ${LABEL[c]}`

@@ -28,6 +28,8 @@
   font-weight: 600;
   color: var(--text);
   min-width: 0;
+  /* .sideBlack's flex-end sizes this to content; cap it so the name ellipsizes. */
+  max-width: 100%;
 }
 
 /* Black side mirrors: name then swatch, hugging the outer (right) edge. */

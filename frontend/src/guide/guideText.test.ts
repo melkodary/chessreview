@@ -37,7 +37,7 @@ describe('heuristicGuide.describe', () => {
 
   it('great move keeps its label', () => {
     expect(heuristicGuide.describe(move({ san: 'Rxh4', bestMoveSan: 'Rxh4', classification: 'great' })))
-      .toBe('Rxh4 is a great move')
+      .toBe('Rxh4 is a critical move')
   })
 
   it('blunder names the best move with correct article', () => {
@@ -55,13 +55,13 @@ describe('heuristicGuide.describe', () => {
       .toBe('a5 is a good move')
   })
 
-  it('excellent uses "an"', () => {
+  it('excellent reads as Solid', () => {
     expect(heuristicGuide.describe(move({ san: 'a5', bestMoveSan: 'd5', classification: 'excellent' })))
-      .toBe('a5 is an excellent move')
+      .toBe('a5 is a solid move')
   })
 
   it('miss names the best move', () => {
     expect(heuristicGuide.describe(move({ san: 'g6', bestMoveSan: 'Nxg5', classification: 'miss' })))
-      .toBe('g6 is a miss — best was Nxg5')
+      .toBe('g6 is a missed chance — best was Nxg5')
   })
 })
