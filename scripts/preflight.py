@@ -23,7 +23,9 @@ failures -- but they are never silent, because "could not check" reading as
 "checked and fine" is the bug this repo keeps re-eating.
 """
 import argparse
+import os
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -183,7 +185,16 @@ def run_all(names: list[str], jobs: int):
             yield name, future.result()
 
 
+def free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
 def main() -> int:
+    # e2e reuses any server on its port, so a stray dev server (another tree,
+    # other env) would be tested instead of this one. An explicit E2E_PORT wins.
+    os.environ.setdefault("E2E_PORT", str(free_port()))
     ap = argparse.ArgumentParser(
         description="Run the checks that cover what changed.",
         formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)

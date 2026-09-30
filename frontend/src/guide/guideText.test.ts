@@ -35,7 +35,7 @@ describe('heuristicGuide.describe', () => {
       .toBe('Qxh7 is a brilliant move')
   })
 
-  it('great move keeps its label', () => {
+  it('critical move keeps its label', () => {
     expect(heuristicGuide.describe(move({ san: 'Rxh4', bestMoveSan: 'Rxh4', classification: 'great' })))
       .toBe('Rxh4 is a critical move')
   })
