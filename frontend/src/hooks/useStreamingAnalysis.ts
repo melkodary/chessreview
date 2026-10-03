@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AnalysisLine } from '../api/analyzer'
 import { engine } from '../engine/stockfish'
-import { putEval } from '../engine/evalCache'
+import { getEval, putEval } from '../engine/evalCache'
 import { carryLines } from '../engine/pvCarry'
 import { ANALYSIS_THROTTLE_MS } from '../config'
 
@@ -24,11 +24,17 @@ const INITIAL: State =
 const IDLE: State =
   { lines: [], displayLines: [], freshCount: 0, currentDepth: 0, loading: false, error: '' }
 
-/** Display for a position the engine has not ticked for yet: carry the played
- *  line's tail (`predicted`), else hold the last live lines dimmed (`stale`).
- *  Neither synthesises `currentDepth` — the badge must not claim it. */
-function displayFor(enabled: boolean, held: Held | null, fen: string): State {
-  if (!enabled || !held) return enabled ? INITIAL : IDLE
+/** Display for a position the engine has not ticked for yet: an earlier search
+ *  of this FEN from the eval cache (depth included — it was really searched),
+ *  else carry the played line's tail, else hold the last live lines dimmed. */
+function displayFor(enabled: boolean, held: Held | null, fen: string, multipv: number): State {
+  if (!enabled) return IDLE
+  const cached = getEval(fen, multipv)
+  if (cached) {
+    const lines = cached.lines.slice(0, multipv)
+    return { ...INITIAL, displayLines: lines, freshCount: lines.length, currentDepth: cached.depth }
+  }
+  if (!held) return INITIAL
   // Same FEN, new search (a time/multipv/engine setting changed): the held lines
   // genuinely belong to the position on screen, so nothing is stale.
   if (held.fen === fen) {
@@ -48,7 +54,7 @@ export function useStreamingAnalysis(
   engineHash: number,
   enabled = true,
 ): State {
-  const [state, setState] = useState<State>(enabled ? INITIAL : IDLE)
+  const [state, setState] = useState<State>(() => displayFor(enabled, null, fen, lines))
   // The last *live* emission, kept as state (not a ref) because the render-time
   // reset below has to read it — this repo's react-hooks/refs rule forbids
   // touching a ref during render.
@@ -61,7 +67,7 @@ export function useStreamingAnalysis(
   const [prevKey, setPrevKey] = useState(key)
   if (key !== prevKey) {
     setPrevKey(key)
-    setState(displayFor(enabled, held, fen))
+    setState(displayFor(enabled, held, fen, lines))
     // Returning to the game start — and, in practice, arriving at a different
     // game — must not surface another position's lines.
     if (!enabled && held) setHeld(null)
@@ -85,9 +91,16 @@ export function useStreamingAnalysis(
 
     const start = () => {
       lastStartRef.current = Date.now()
+      // A re-search (tab switch, revisit) climbs back through depths the cache
+      // already holds; hide those so the display never regresses.
+      const floor = getEval(fen, lines)?.depth ?? 0
       engine
         .analyze(fen, { kind: 'movetime', ms: timeMs }, lines, (engineLines, depth, final) => {
           if (ctrl.signal.aborted) return
+          if (depth < floor) {
+            if (final) setState((s) => ({ ...s, loading: false }))
+            return
+          }
           // Feed the shared eval cache: the branch grader reuses this tip's eval
           // (fen == the branch's next before-position) to grade without a backend
           // search. Live frames only — a carried line is no search of this FEN.

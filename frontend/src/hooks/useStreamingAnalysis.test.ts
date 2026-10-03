@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { OnLines, SearchLimit } from '../engine/stockfish'
 import { useStreamingAnalysis } from './useStreamingAnalysis'
+import { clearEvalCache } from '../engine/evalCache'
 
 // Drive the engine singleton from the test: capture the onLines callback so we
 // can push frames, and let the test decide whether analyze resolves or rejects.
@@ -48,6 +49,7 @@ beforeEach(() => {
   configureCalls.length = 0
   analyzeResult = Promise.resolve()
   throttleMs = 250
+  clearEvalCache()
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -263,8 +265,9 @@ describe('useStreamingAnalysis display channel', () => {
     rerender({ fen: FEN_A, enabled: false })
     expect(result.current.displayLines).toEqual([])
 
-    // Re-enabling on the same position must not resurrect the cleared lines.
-    rerender({ fen: FEN_A, enabled: true })
+    // Re-enabling elsewhere must not resurrect the cleared lines (the same FEN
+    // may show its own cached search — that is this position's eval).
+    rerender({ fen: FEN_D, enabled: true })
     expect(result.current.displayLines).toEqual([])
     expect(result.current.freshCount).toBe(0)
   })
@@ -286,5 +289,20 @@ describe('useStreamingAnalysis display channel', () => {
     expect(result.current).toMatchObject({
       displayLines: [], freshCount: 0, error: 'unsupported browser',
     })
+  })
+
+  it('resumes at the cached depth on remount and hides shallower re-search frames', async () => {
+    const first = renderHook(() => useStreamingAnalysis(FEN_A, 20_000, 3, THREADS, HASH))
+    await act(async () => { calls[0].onLines([PV, PV2], 18, false) })
+    first.unmount() // tab switch
+
+    const { result } = renderHook(() => useStreamingAnalysis(FEN_A, 20_000, 3, THREADS, HASH))
+    expect(result.current.currentDepth).toBe(18)
+    expect(result.current.displayLines).toEqual([PV, PV2])
+
+    await act(async () => { calls[1].onLines([LINE], 5, false) })
+    expect(result.current.currentDepth).toBe(18)
+    await act(async () => { calls[1].onLines([PV, PV2], 19, false) })
+    expect(result.current.currentDepth).toBe(19)
   })
 })
