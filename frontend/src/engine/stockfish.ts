@@ -1,7 +1,6 @@
 import type { AnalysisLine } from '../api/analyzer'
 import {
   ANALYSIS_DEPTH_CEILING, ENGINE_BOOT_TIMEOUT_MS, ENGINE_PV_DEPTH, ENGINE_STOP_GRACE_MS,
-  GRADE_ENGINE_THREADS,
 } from '../config'
 import { ENGINE_URL, SETTINGS_STORAGE } from '../storage'
 import { parseInfo } from './uci'
@@ -52,16 +51,15 @@ function preserveRichestPv(history: Map<string, AnalysisLine>, next: AnalysisLin
 }
 
 /**
- * Singleton UCI worker wrapper around multi-threaded WASM Stockfish.
- *
- * One worker for the whole app (hash reuse across positions). Boots lazily on
+ * UCI worker wrapper around multi-threaded WASM Stockfish: `engine` (Analysis, the
+ * user's Threads/Hash) and ensureEval's grade pool (fixed options). Boots lazily on
  * the first analyze() so the WASM/NNUE download isn't paid until the user opens
  * the analyze tab. Stale-position races are killed with an isready/readyok
  * barrier: `go` is only sent after the engine acknowledges the new position, so
  * trailing frames from a cancelled search are dropped (current is null between
  * stop and barrier) — and by `staleBestmoves`, which the barrier alone cannot do.
  */
-class Engine {
+export class Engine {
   private worker: Worker | null = null
   private booting: Promise<void> | null = null
   private cancelBoot: (() => void) | null = null
@@ -75,13 +73,15 @@ class Engine {
   // Armed while a stopped search still owes its `bestmove`; firing means the
   // engine ignored `stop`, so the worker is replaced (see respawn).
   private staleTimer: ReturnType<typeof setTimeout> | null = null
-  private idleListeners = new Set<() => void>()
-  private threads = SETTINGS_STORAGE.engineThreads.load()
-  private hash = SETTINGS_STORAGE.engineHash.load()
-  // Threads the live worker runs with; per search, since depth searches use fewer.
-  private appliedThreads = 0
+  private threads: number
+  private hash: number
   private state: EngineRunState = 'idle'
   private listeners = new Set<() => void>()
+
+  constructor(fixed?: { threads: number; hash: number }) {
+    this.threads = fixed?.threads ?? SETTINGS_STORAGE.engineThreads.load()
+    this.hash = fixed?.hash ?? SETTINGS_STORAGE.engineHash.load()
+  }
 
   private send(cmd: string) {
     this.worker!.postMessage(cmd)
@@ -103,18 +103,8 @@ class Engine {
     return { url: activeEngineUrl, state: this.state }
   }
 
-  /** Subscribe to "no search running or waiting"; returns an unsubscribe fn. */
-  onIdle(cb: () => void): () => void {
-    this.idleListeners.add(cb)
-    return () => this.idleListeners.delete(cb)
-  }
-
-  private emitIdleIfFree() {
-    if (!this.current && !this.pending) this.idleListeners.forEach((f) => f())
-  }
-
   /** Tear down the live worker so the next analyze() reboots with fresh setoption values. */
-  private teardown(announceIdle = true) {
+  private teardown() {
     const dropped = [this.current, this.pending]
     this.cancelBoot?.()
     this.cancelBoot = null
@@ -127,7 +117,6 @@ class Engine {
     this.clearStaleTimer()
     this.setState('idle')
     dropped.forEach((s) => s?.onSuperseded?.())
-    if (announceIdle) this.emitIdleIfFree()
   }
 
   /** A stopped search owes one `bestmove`; give it ENGINE_STOP_GRACE_MS to pay. */
@@ -148,9 +137,8 @@ class Engine {
     const resume = this.pending ?? this.current
     this.pending = null
     this.current = null
-    // Idle would let another consumer dispatch ahead of the search being resumed.
+    this.teardown()
     const live = resume && !resume.signal?.aborted ? resume : null
-    this.teardown(!live)
     if (!live) return
     void this.analyze(live.fen, live.limit, live.multipv, live.onLines, live.signal, live.onSuperseded)
       .catch(() => live.onSuperseded?.())
@@ -221,7 +209,6 @@ class Engine {
         const line = typeof e.data === 'string' ? e.data : ''
         if (line.includes('uciok')) {
           this.send(`setoption name Threads value ${this.threads}`)
-          this.appliedThreads = this.threads
           this.send(`setoption name Hash value ${this.hash}`)
           this.send('isready')
         } else if (line.includes('readyok')) {
@@ -270,7 +257,6 @@ class Engine {
       const done = this.current
       this.current = null
       this.emit(done, true)
-      this.emitIdleIfFree()
       return
     }
 
@@ -332,12 +318,6 @@ class Engine {
     if (this.current) this.owe()
     this.current = null
     this.pending = search
-    // Stockfish waits out the stopped search before resizing; resizing clears the hash.
-    const threads = limit.kind === 'depth' ? Math.min(GRADE_ENGINE_THREADS, this.threads) : this.threads
-    if (threads !== this.appliedThreads) {
-      this.send(`setoption name Threads value ${threads}`)
-      this.appliedThreads = threads
-    }
     this.send(`setoption name MultiPV value ${multipv}`)
     this.send(`position fen ${fen}`)
     this.send('isready') // barrier — go is sent on readyok
@@ -350,7 +330,6 @@ class Engine {
         this.owe()
         this.current = null
       }
-      this.emitIdleIfFree()
     })
   }
 
@@ -362,7 +341,6 @@ class Engine {
     this.pending = null
     this.current = null
     dropped.forEach((s) => s?.onSuperseded?.())
-    this.emitIdleIfFree()
   }
 }
 

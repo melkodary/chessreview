@@ -1,22 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { AnalysisLine } from '../api/analyzer'
 
-const idle = vi.hoisted(() => ({ fire: () => {} }))
+const h = vi.hoisted(() => ({ analyze: vi.fn(), created: [] as unknown[] }))
 vi.mock('./stockfish', () => ({
-  engine: {
-    analyze: vi.fn(),
-    getStatus: () => ({ url: '', state: 'ready' }),
-    onIdle: (cb: () => void) => { idle.fire = cb; return () => {} },
+  Engine: class {
+    constructor(public opts: unknown) { h.created.push(this) }
+    analyze = h.analyze
+    getStatus = () => ({ url: '', state: 'ready' })
   },
 }))
 
-import { engine } from './stockfish'
-import type { OnLines } from './stockfish'
+import type { Engine, OnLines } from './stockfish'
 import { ensureEval, PRIORITY, resetEvalScheduler, type EvalOutcome } from './ensureEval'
 import { putEval, clearEvalCache } from './evalCache'
 import { ENGINE_DEPTH_TIMEOUT_MS } from '../config'
 
-const mockAnalyze = vi.mocked(engine.analyze)
+const mockAnalyze = vi.mocked(h.analyze as Engine['analyze'])
 
 function line(evaluation: number, pvUci: string[]): AnalysisLine {
   return { moves: [], evaluation, mate: null, pvUci }
@@ -27,18 +26,18 @@ function fresh() {
 }
 
 // One engine.analyze call, driven by hand.
-interface Call { fen: string; onLines: OnLines; signal: AbortSignal; superseded: () => void }
+interface Call { fen: string; onLines: OnLines; signal: AbortSignal; superseded: () => void; worker: unknown }
 let calls: Call[] = []
 function manualEngine() {
-  mockAnalyze.mockImplementation((fen, _limit, _mpv, onLines, signal, onSuperseded) => {
-    calls.push({ fen, onLines, signal: signal!, superseded: onSuperseded! })
+  mockAnalyze.mockImplementation(function (this: unknown, fen, _limit, _mpv, onLines, signal, onSuperseded) {
+    calls.push({ fen, onLines, signal: signal!, superseded: onSuperseded!, worker: this })
     return Promise.resolve()
   })
 }
 const flush = () => new Promise((r) => setTimeout(r, 0))
 
 describe('ensureEval', () => {
-  beforeEach(() => { clearEvalCache(); resetEvalScheduler(); mockAnalyze.mockReset(); calls = [] })
+  beforeEach(() => { clearEvalCache(); resetEvalScheduler(1); mockAnalyze.mockReset(); calls = []; h.created = [] })
   afterEach(() => { vi.useRealTimers() })
 
   it('returns a cached entry deep enough without searching', async () => {
@@ -181,19 +180,44 @@ describe('ensureEval', () => {
     expect((await sweep)?.depth).toBe(18)
   })
 
-  it('waits for engine idle after another consumer takes the engine, then resumes', async () => {
+  it('requeues a search its worker dropped, keeping its waiters', async () => {
     manualEngine()
     const r = ensureEval('p', 18, 2, fresh())
     await flush()
-    calls[0].superseded() // Analysis called engine.analyze
-    void ensureEval('q', 18, 2, fresh())
-    await flush()
-    expect(calls).toHaveLength(1) // nothing dispatches over the outside search
-    idle.fire()
+    calls[0].superseded() // a respawn whose reboot failed
     await flush()
     expect(calls[1].fen).toBe('p')
     calls[1].onLines([line(0, ['e2e4']), line(0, ['d2d4'])], 18, true)
     expect((await r)?.depth).toBe(18)
+  })
+
+  it('runs searches side by side, one per worker, each worker single-threaded', async () => {
+    resetEvalScheduler(3)
+    manualEngine()
+    const asks = ['a', 'b', 'c', 'd'].map((f) => ensureEval(f, 18, 2, fresh(), { priority: PRIORITY.gradeNow }))
+    await flush()
+    expect(calls.map((c) => c.fen)).toEqual(['a', 'b', 'c']) // 'd' waits for a free worker
+    expect(new Set(calls.map((c) => c.worker)).size).toBe(3)
+    expect(h.created).toHaveLength(3)
+    expect((h.created[0] as { opts: unknown }).opts).toEqual({ threads: 1, hash: 32 })
+    calls[1].onLines([line(0, ['e2e4']), line(0, ['d2d4'])], 18, true)
+    await flush()
+    expect(calls[3]).toMatchObject({ fen: 'd', worker: calls[1].worker }) // reuses the freed worker
+    for (const c of [calls[0], calls[2], calls[3]]) c.onLines([line(0, ['e2e4']), line(0, ['d2d4'])], 18, true)
+    expect((await Promise.all(asks)).map((r) => r?.depth)).toEqual([18, 18, 18, 18])
+  })
+
+  it('preempts the lowest-priority running search when every worker is busy', async () => {
+    resetEvalScheduler(2)
+    manualEngine()
+    void ensureEval('backfill', 18, 2, fresh(), { priority: PRIORITY.gradeBackfill })
+    void ensureEval('sweep', 18, 2, fresh(), { priority: PRIORITY.sweep })
+    await flush()
+    void ensureEval('now', 18, 2, fresh(), { priority: PRIORITY.gradeNow })
+    await flush()
+    expect(calls[1].signal.aborted).toBe(true) // the sweep, not the backfill
+    expect(calls[0].signal.aborted).toBe(false)
+    expect(calls[2]).toMatchObject({ fen: 'now', worker: calls[1].worker })
   })
 
   it('times out on running time only, never while queued', async () => {

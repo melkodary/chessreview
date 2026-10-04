@@ -1,16 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AnalysisLine } from '../api/analyzer'
 
+const h = vi.hoisted(() => ({ analyze: vi.fn() }))
 vi.mock('./stockfish', () => ({
-  engine: { analyze: vi.fn(), getStatus: () => ({ url: '', state: 'ready' }), onIdle: () => () => {} },
+  Engine: class { analyze = h.analyze; getStatus = () => ({ url: '', state: 'ready' }) },
 }))
 
-import { engine } from './stockfish'
+import type { Engine } from './stockfish'
 import { sweepGame, type SweepPoint } from './sweepGame'
 import { putEval, clearEvalCache } from './evalCache'
 import { resetEvalScheduler } from './ensureEval'
 
-const mockAnalyze = vi.mocked(engine.analyze)
+const mockAnalyze = vi.mocked(h.analyze as Engine['analyze'])
 
 function line(evaluation: number, mate: number | null = null): AnalysisLine {
   return { moves: [], evaluation, mate }

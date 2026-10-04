@@ -1,6 +1,8 @@
-import { engine } from './stockfish'
+import { Engine } from './stockfish'
 import { getEval, putEval, type CachedPosition } from './evalCache'
-import { ENGINE_DEPTH_TIMEOUT_MS } from '../config'
+import {
+  ENGINE_DEPTH_TIMEOUT_MS, GRADE_ENGINE_HASH_MB, GRADE_ENGINE_THREADS, GRADE_WORKERS_MAX,
+} from '../config'
 
 // How one ensureEval call was answered, for the grade trace (engine/gradeTrace.ts).
 // `firstFrameMs` covers boot, queueing and waiting out the previous search's stop.
@@ -9,7 +11,7 @@ export interface EvalOutcome {
   result: 'ok' | 'timeout' | 'aborted' | 'boot-fail'
   ms: number
   depth: number
-  engineState: ReturnType<typeof engine.getStatus>['state']
+  engineState: ReturnType<Engine['getStatus']>['state']
   firstFrameMs?: number
   // Waited for a worker before its search started; joined a search already queued or running.
   queuedMs?: number
@@ -38,24 +40,44 @@ interface Job {
   subs: Set<Sub>
   seq: number
   ctrl: AbortController | null // set while running
+  worker: Engine | null
   startedAt: number
   firstFrameAt?: number
   reached: number
   timer?: ReturnType<typeof setTimeout>
 }
 
-// The scheduler: one queue of depth searches shared by every caller. Identical
-// asks share one search; a caller that leaves never stops it — only a job someone
-// still waits on takes the worker (docs/specs/2026-10-04-fast-deviation-grading).
+// The scheduler: one queue of depth searches over a pool of single-thread workers.
+// Identical asks share a search; a caller that leaves never stops it — only a job
+// someone still waits on takes its worker (docs/specs/2026-10-04-fast-deviation-grading).
 const jobs = new Set<Job>()
-let running: Job | null = null
-// Something outside the queue (Analysis) holds the engine: wait for its idle.
-let externalBusy = false
+const running = new Map<Engine, Job>()
+const pool: Engine[] = []
+let poolSize: number | null = null
 let seq = 0
 let pumpQueued = false
-let idleHooked = false
 
 const prio = (j: Job) => Math.min(...[...j.subs].map((s) => s.priority))
+
+// Spare one core for the page and Analysis, but always at least one worker.
+function size(): number {
+  poolSize ??= Math.max(1, Math.min((navigator.hardwareConcurrency ?? 2) - 1, GRADE_WORKERS_MAX))
+  return poolSize
+}
+
+function freeWorker(): Engine | null {
+  const idle = pool.find((w) => !running.has(w))
+  if (idle) return idle
+  if (pool.length >= size()) return null
+  const w = new Engine({ threads: GRADE_ENGINE_THREADS, hash: GRADE_ENGINE_HASH_MB })
+  pool.push(w)
+  return w
+}
+
+function poolState(): EvalOutcome['engineState'] {
+  const states = pool.map((w) => w.getStatus().state)
+  return (['ready', 'booting', 'error'] as const).find((st) => states.includes(st)) ?? 'idle'
+}
 
 function settle(job: Job, sub: Sub, v: CachedPosition | null, result: EvalOutcome['result']) {
   job.subs.delete(sub)
@@ -70,10 +92,16 @@ function settle(job: Job, sub: Sub, v: CachedPosition | null, result: EvalOutcom
   sub.resolve(v)
 }
 
-function finish(job: Job) {
+function release(job: Job) {
   clearTimeout(job.timer)
+  if (job.worker) running.delete(job.worker)
+  job.worker = null
+  job.ctrl = null
+}
+
+function finish(job: Job) {
+  release(job)
   jobs.delete(job)
-  if (running === job) running = null
   schedulePump()
 }
 
@@ -86,42 +114,46 @@ function schedulePump() {
 }
 
 function pump() {
-  if (externalBusy) return
-  let best: Job | null = null
-  for (const j of jobs) {
-    if (j === running || j.subs.size === 0) continue
-    if (!best || prio(j) < prio(best) || (prio(j) === prio(best) && j.seq < best.seq)) best = j
+  for (;;) {
+    let best: Job | null = null
+    for (const j of jobs) {
+      if (j.worker || j.subs.size === 0) continue
+      if (!best || prio(j) < prio(best) || (prio(j) === prio(best) && j.seq < best.seq)) best = j
+    }
+    if (!best) return
+    let worker = freeWorker()
+    if (!worker) {
+      // Orphans yield to anyone; a waited-on search only to strictly higher priority.
+      const rank = (j: Job) => (j.subs.size === 0 ? Infinity : prio(j))
+      const victim = [...running.values()].reduce((a, b) => (rank(b) > rank(a) ? b : a))
+      if (rank(victim) <= prio(best)) return
+      worker = victim.worker!
+      victim.ctrl?.abort()
+      release(victim)
+      if (victim.subs.size === 0) jobs.delete(victim)
+    }
+    start(best, worker)
   }
-  if (!best) return
-  if (running) {
-    // An orphan yields to anyone; a waited-on search only to strictly higher priority.
-    if (running.subs.size > 0 && prio(best) >= prio(running)) return
-    const prev = running
-    running = null
-    clearTimeout(prev.timer)
-    prev.ctrl?.abort()
-    prev.ctrl = null
-    if (prev.subs.size === 0) jobs.delete(prev)
-  }
-  start(best)
 }
 
-function start(job: Job) {
-  running = job
+function start(job: Job, worker: Engine) {
+  running.set(worker, job)
+  job.worker = worker
   job.ctrl = new AbortController()
   job.startedAt = performance.now()
   job.reached = 0
   job.firstFrameAt = undefined
   const ctrl = job.ctrl
+  const live = () => job.ctrl === ctrl
   job.timer = setTimeout(() => {
-    if (running !== job) return
+    if (!live()) return
     job.subs.forEach((s) => settle(job, s, null, 'timeout'))
     ctrl.abort()
     finish(job)
   }, ENGINE_DEPTH_TIMEOUT_MS)
-  engine
+  worker
     .analyze(job.fen, { kind: 'depth', depth: job.depth }, job.multipv, (lines, d, final) => {
-      if (running !== job) return
+      if (!live()) return
       job.firstFrameAt ??= performance.now()
       job.reached = Math.max(job.reached, d)
       putEval(job.fen, lines, d, job.multipv)
@@ -136,16 +168,14 @@ function start(job: Job) {
         finish(job)
       }
     }, ctrl.signal, () => {
-      // Another consumer took the engine: requeue with the waiters, resume on idle.
-      if (running !== job) return
-      running = null
-      clearTimeout(job.timer)
-      job.ctrl = null
-      externalBusy = true
+      // The worker dropped it (a failed respawn): requeue with its waiters.
+      if (!live()) return
+      release(job)
       if (job.subs.size === 0) jobs.delete(job)
+      schedulePump()
     })
     .catch(() => {
-      if (running !== job) return
+      if (!live()) return
       job.subs.forEach((s) => settle(job, s, null, 'boot-fail'))
       finish(job)
     })
@@ -161,23 +191,19 @@ export function ensureEval(
   signal: AbortSignal,
   opts: { priority?: number; onOutcome?: (o: EvalOutcome) => void } = {},
 ): Promise<CachedPosition | null> {
-  const engineState = engine.getStatus().state
+  const engineState = poolState()
   const hit = getEval(fen, multipv, depth)
   if (hit) {
     opts.onOutcome?.({ source: 'cache', result: 'ok', ms: 0, depth: hit.depth, engineState })
     return Promise.resolve(hit)
   }
   if (signal.aborted) return Promise.resolve(null)
-  if (!idleHooked) {
-    idleHooked = true
-    engine.onIdle(() => { externalBusy = false; schedulePump() })
-  }
 
   return new Promise((resolve) => {
     let job = [...jobs].find((j) => j.fen === fen && j.depth >= depth && j.multipv >= multipv)
     const shared = job != null
     if (!job) {
-      job = { fen, depth, multipv, subs: new Set(), seq: seq++, ctrl: null, startedAt: 0, reached: 0 }
+      job = { fen, depth, multipv, subs: new Set(), seq: seq++, ctrl: null, worker: null, startedAt: 0, reached: 0 }
       jobs.add(job)
     }
     const owner = job
@@ -189,19 +215,19 @@ export function ensureEval(
     signal.addEventListener('abort', () => {
       if (!owner.subs.has(sub)) return
       settle(owner, sub, null, 'aborted')
-      if (owner.subs.size === 0 && running !== owner) jobs.delete(owner)
+      if (owner.subs.size === 0 && !owner.worker) jobs.delete(owner)
       schedulePump()
     })
     schedulePump()
   })
 }
 
-/** Test seam: forget every queued and running job. */
-export function resetEvalScheduler(): void {
-  running?.ctrl?.abort()
-  jobs.forEach((j) => clearTimeout(j.timer))
+/** Test seam: forget every job and worker; `workers` fixes the pool size. */
+export function resetEvalScheduler(workers?: number): void {
+  jobs.forEach((j) => { j.ctrl?.abort(); clearTimeout(j.timer) })
   jobs.clear()
-  running = null
-  externalBusy = false
+  running.clear()
+  pool.length = 0
+  poolSize = workers ?? null
   pumpQueued = false
 }

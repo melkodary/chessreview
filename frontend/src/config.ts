@@ -40,10 +40,13 @@ export const ENGINE_DEPTH_TIMEOUT_MS = num(import.meta.env.VITE_ENGINE_DEPTH_TIM
 // How long a stopped search may take to answer with its `bestmove` before the
 // worker is replaced: the engine has ignored `stop` for 80s+ once.
 export const ENGINE_STOP_GRACE_MS = num(import.meta.env.VITE_ENGINE_STOP_GRACE_MS, 3_000)
-// Threads for depth-limited searches (grading, sweeps), capped by the user's setting.
-// Fewer WASM threads reach a fixed depth sooner: 1 thread median 1.1s / max 4.0s,
-// 8 threads 2.6s / 30s+ (spec 2026-10-04-fast-deviation-grading).
+// Threads per grade-pool worker (grading, sweeps). Fewer WASM threads reach a fixed depth
+// sooner: 1 thread median 1.1s / max 4.0s, 8 threads 2.6s / 30s+ (spec 2026-10-04).
 export const GRADE_ENGINE_THREADS = num(import.meta.env.VITE_GRADE_ENGINE_THREADS, 1)
+// Grade workers: min(cores − 1, this). Four 1-thread engines at once: each search
+// ~30% slower than alone (p90 2.9s); 3 × 2-thread did worse (p90 5.6s).
+export const GRADE_WORKERS_MAX = num(import.meta.env.VITE_GRADE_WORKERS_MAX, 4)
+export const GRADE_ENGINE_HASH_MB = num(import.meta.env.VITE_GRADE_ENGINE_HASH_MB, 32)
 
 // Analysis searches on a wall-clock budget, not a depth target — depth is an
 // output (the badge), never an input. Steps in seconds; the setting persists ms.

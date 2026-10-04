@@ -228,38 +228,22 @@ describe('search limit dispatch', () => {
   })
 })
 
-describe('per-search threads', () => {
-  it('runs depth searches at GRADE_ENGINE_THREADS and restores the user setting for movetime', async () => {
-    const { engine } = await import('./stockfish')
+describe('fixed-option engines (the grade pool)', () => {
+  it("boots with its own Threads/Hash, whatever the user's settings, and never resizes", async () => {
+    const { Engine, engine } = await import('./stockfish')
     engine.configure({ threads: 4, hash: 64 })
-    const first = engine.analyze('startpos', { kind: 'depth', depth: 18 }, 2, () => {})
+    const grade = new Engine({ threads: 1, hash: 32 })
+    const p = grade.analyze('startpos', { kind: 'depth', depth: 18 }, 2, () => {})
     const worker = workerInstances[0]
     completeHandshake(worker)
-    await first
-    const threadsSet = () => worker.posted.filter((c) => c.startsWith('setoption name Threads'))
-    // Boot applies the user's 4, then the depth search drops to the grade setting.
-    expect(threadsSet()).toEqual(['setoption name Threads value 4', 'setoption name Threads value 1'])
-    expect(worker.posted.indexOf('setoption name Threads value 1'))
-      .toBeLessThan(worker.posted.lastIndexOf('isready'))
-
-    await engine.analyze('startpos', { kind: 'depth', depth: 18 }, 2, () => {})
-    expect(threadsSet()).toHaveLength(2) // already at 1: no resize, the hash survives
-    await engine.analyze('startpos', { kind: 'movetime', ms: 5000 }, 3, () => {})
-    expect(threadsSet().at(-1)).toBe('setoption name Threads value 4')
-  })
-
-  it('never exceeds a user setting below the grade default', async () => {
-    const { engine } = await import('./stockfish')
-    engine.configure({ threads: 1, hash: 64 })
-    const p = engine.analyze('startpos', { kind: 'depth', depth: 18 }, 2, () => {})
-    completeHandshake(workerInstances[0])
     await p
-    expect(workerInstances[0].posted.filter((c) => c.startsWith('setoption name Threads')))
-      .toEqual(['setoption name Threads value 1'])
+    await grade.analyze('startpos', { kind: 'movetime', ms: 1000 }, 2, () => {})
+    expect(worker.posted.filter((c) => /Threads|Hash/.test(c)))
+      .toEqual(['setoption name Threads value 1', 'setoption name Hash value 32'])
   })
 })
 
-describe('supersede, idle and stop grace', () => {
+describe('supersede and stop grace', () => {
   const FEN1 = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
   const FEN2 = 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1'
   async function booted() {
@@ -286,15 +270,6 @@ describe('supersede, idle and stop grace', () => {
     await engine.analyze('c', { kind: 'depth', depth: 18 }, 2, () => {}, ctrl.signal, aborted)
     ctrl.abort()
     expect(aborted).not.toHaveBeenCalled()
-  })
-
-  it('announces idle when a search finishes with nothing waiting', async () => {
-    const { engine, worker } = await booted()
-    const idle = vi.fn()
-    engine.onIdle(idle)
-    worker.emit('info depth 18 multipv 1 score cp 10 pv e2e4')
-    worker.emit('bestmove e2e4')
-    expect(idle).toHaveBeenCalledOnce()
   })
 
   it('replaces a worker that ignores stop and re-issues the waiting search', async () => {
