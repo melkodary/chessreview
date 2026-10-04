@@ -9,5 +9,5 @@ python-chess~=1.11
 cachetools~=5.5.0
 sqlalchemy~=2.0
 pydantic-settings~=2.15
-python-dotenv~=1.0
+python-dotenv~=1.2
 python-json-logger~=4.2
