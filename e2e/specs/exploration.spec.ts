@@ -126,7 +126,12 @@ test('deviating on Review shows a branch-sourced eval bar; stepping back to the 
   // depth-8 search can land it before the next line runs.
   let release!: () => void
   const held = new Promise<void>((r) => { release = r })
-  await page.route('**/reviews/move', async (route) => { await held; await route.fallback() })
+  const bodies: Record<string, unknown>[] = []
+  await page.route('**/reviews/move', async (route) => {
+    bodies.push(route.request().postDataJSON())
+    await held
+    await route.fallback()
+  })
 
   // Still on the game line (the fork): the bar reads the game review data —
   // ply 1 (e4) hasn't been played yet, so it shows the pre-move eval, 0.0.
@@ -145,6 +150,9 @@ test('deviating on Review shows a branch-sourced eval bar; stepping back to the 
   // The grade lands (mocked verdict: eval_after_played 1.2) and the label
   // updates to it — the branch's own number, not the game line's.
   await expect(viewer.evalBar().locator('span')).toHaveText('+1.2', { timeout: 20000 })
+  // Graded from the browser's own evals: the backend never has to search.
+  expect(bodies.length).toBeGreaterThan(0)
+  for (const b of bodies) expect(b).toMatchObject({ before_lines: expect.any(Array), after_eval: expect.any(Object) })
 
   // Step back to the fork: the branch survives (still exploring), and the bar
   // seamlessly reverts to the game-line value.

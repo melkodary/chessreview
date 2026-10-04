@@ -13,12 +13,9 @@ export interface GradeTrace {
   pass: number
   // What changed since the previous attempt was scheduled (empty on the first).
   causes: string[]
-  feSkip?: 'flag-off' | 'engine-mismatch'
-  reviewEngine?: string | null
   before?: EvalOutcome
   after?: EvalOutcome | 'terminal'
-  // 'classify' = backend used our evals; 'search' = backend ran Stockfish.
-  backend?: { path: 'classify' | 'search'; ms: number; failed?: boolean }
+  backend?: { ms: number; failed?: boolean } // the classify round-trip
 }
 
 const MAX_ENTRIES = 200
@@ -66,10 +63,9 @@ export function formatGrade(t: GradeTrace): string {
     + ` · ${s(t.sinceMoveMs)} since move · pass ${t.pass} ${s(t.passMs)}`
     + (t.causes.length ? ` (restarted by ${t.causes.join(', ')})` : '')
   const parts = [
-    t.feSkip && `browser engine skipped: ${t.feSkip}${t.feSkip === 'engine-mismatch' ? ` (review engine ${t.reviewEngine ?? 'none'})` : ''}`,
     formatEval('before', t.before),
     formatEval('after', t.after),
-    t.backend && `backend ${t.backend.path} ${s(t.backend.ms)}${t.backend.failed ? ' FAILED' : ''}`,
+    t.backend && `backend ${s(t.backend.ms)}${t.backend.failed ? ' FAILED' : ''}`,
   ].filter(Boolean)
   return [head, ...parts].join(' · ')
 }

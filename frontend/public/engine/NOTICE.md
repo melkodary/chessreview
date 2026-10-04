@@ -1,7 +1,9 @@
-This directory vendors, unmodified, the Stockfish.js 19 lite build (multi-
-threaded WASM, embedded NNUE) from the npm package `stockfish@19.0.0`:
+This directory vendors, unmodified, the Stockfish.js 19 lite builds (WASM,
+embedded NNUE) from the npm package `stockfish@19.0.0`: the multi-threaded
 `stockfish-19-lite.js`, `stockfish-19-lite.wasm`, and `stockfish.worker.js` (a
-byte-identical copy of the `.js`, kept as the worker entry name).
+byte-identical copy of the `.js`, kept as the worker entry name); and the
+single-threaded `stockfish-19-lite-single.js` / `.wasm`, used where the page is
+not cross-origin isolated.
 
 Stockfish is licensed under the **GNU GPLv3** (`COPYING.txt` in this
 directory). Corresponding Source for these exact files, including the

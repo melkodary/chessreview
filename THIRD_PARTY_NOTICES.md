@@ -12,8 +12,8 @@ endorsed by Lichess.
   commit), and ships the binary plus its `Copying.txt` in the backend image.
   The backend drives it over UCI as a separate process.
 - **Browser engine.** `frontend/public/engine/` vendors, unmodified, the
-  `stockfish-19-lite.js` / `.wasm` files from the npm package
-  `stockfish@19.0.0` (integrity
+  `stockfish-19-lite.js` / `.wasm` and `stockfish-19-lite-single.js` / `.wasm`
+  files from the npm package `stockfish@19.0.0` (integrity
   `sha512-jDyYLbqNpboQcMs5HodTHI2CrKL74zkQWb1+sgoNXw5HI6avTblW4G0X7afFt3BBOc6VbTSkOV64EUxm/DWSpg==`),
   built from https://github.com/nmrugg/stockfish.js at commit
   `54fde71d90c7c403964f6cacef48f7bbec495df1`. That commit is the Corresponding

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { SettingsProvider } from '../settings'
-import { STORAGE_KEYS } from '../storage'
+import { ENGINE_URL, STORAGE_KEYS } from '../storage'
 import { ANALYSIS_TIME_STEPS } from '../config'
 import Settings from './Settings'
 
@@ -187,7 +187,7 @@ describe('Settings', () => {
     })
 
     it('lite shows only the Active pill when it is the running engine', () => {
-      engineStatusValue = { url: '/engine/stockfish-19-lite.js', state: 'ready' }
+      engineStatusValue = { url: ENGINE_URL, state: 'ready' }
       const { getByText } = open()
       expect(getByText('Active')).toBeInTheDocument()
     })

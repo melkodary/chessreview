@@ -207,12 +207,21 @@ def _seed_eval(request: MoveReviewRequest) -> float | None:
     return review._cp_white(review._eval_to_info(request.prev_before)) / 100
 
 
+def _only_legal_move(fen: str) -> bool:
+    try:
+        return chess.Board(fen).legal_moves.count() == 1
+    except ValueError:
+        return False
+
+
 def _has_complete_eval_payload(request: MoveReviewRequest | ExplainRequest) -> bool:
     """Does the request carry enough frontend eval to grade with no backend
-    engine? Needs >= 2 before-lines (so `after_second` exists) AND either an
-    after-eval or a terminal after-position (which the frontend never searches).
-    A bad FEN/UCI here routes to the engine path, which raises the same 422."""
-    if not request.before_lines or len(request.before_lines) < 2:
+    engine? Needs >= 2 before-lines (so `after_second` exists), or 1 for a forced
+    move, AND either an after-eval or a terminal after-position (which the frontend
+    never searches). A bad FEN/UCI routes to the engine path, which raises the same 422."""
+    if not request.before_lines:
+        return False
+    if len(request.before_lines) < 2 and not _only_legal_move(request.fen_before):
         return False
     if request.after_eval is not None:
         return True

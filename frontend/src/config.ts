@@ -62,13 +62,13 @@ export const ANALYSIS_DEPTH_CEILING    = num(import.meta.env.VITE_ANALYSIS_DEPTH
 // window with a guaranteed trailing fire. 0 disables it — every change fires.
 export const ANALYSIS_THROTTLE_MS      = num(import.meta.env.VITE_ANALYSIS_THROTTLE_MS, 250)
 
-// Grade a deviation branch ply from the browser's own eval-bar / grader WASM
-// search (attaching evals to POST /reviews/move so the backend skips Stockfish)
-// rather than always making the backend search. On → attach evals when a
-// position is cached/searchable at review depth; off → always omit → backend
-// searches (guaranteed parity). Doubles as a live parity switch. No Settings UI
-// this phase — a plain env default (see the phase-2 deviation-grading spec).
+// Whole-game review: run pass 2 (and the sketch) in the browser. Branch grading
+// always uses browser evals now (2026-10-04); this no longer gates it.
 export const GRADE_WITH_FRONTEND_ENGINE = bool(import.meta.env.VITE_GRADE_WITH_FRONTEND_ENGINE, true)
+
+// Asks for one ply's browser evals before it is an error (a timeout or failed boot each count).
+export const GRADE_MAX_ATTEMPTS = num(import.meta.env.VITE_GRADE_MAX_ATTEMPTS, 3)
+
 // Pre-search where the user is parked on Review: the position and its top moves'
 // after-positions. Off until the grade trace's hit rate says it pays (spec 2026-10-04 §5).
 export const SPECULATE = bool(import.meta.env.VITE_SPECULATE, false)

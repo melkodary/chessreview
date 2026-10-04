@@ -22,7 +22,11 @@ export const STORAGE_KEYS = {
 
 export type SettingsTab = 'analysis' | 'review'
 
-export const ENGINE_URL = '/engine/stockfish-19-lite.js'
+// The threaded build needs SharedArrayBuffer (cross-origin isolation); without it, the
+// same package's single-thread build, whose evals at Threads 1 are identical (2026-10-04).
+export const ENGINE_URL = globalThis.crossOriginIsolated
+  ? '/engine/stockfish-19-lite.js'
+  : '/engine/stockfish-19-lite-single.js'
 // What the backend's Stockfish reports as UCI `id name`; the browser build runs the
 // lite net and stamps its own label so a stored review says which net produced it.
 export const REVIEW_ENGINE_NAME = 'Stockfish 19'

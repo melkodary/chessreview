@@ -9,6 +9,7 @@ import { ensureEval } from '../engine/ensureEval'
 import type { CachedPosition } from '../engine/evalCache'
 import { gradeTrace } from '../engine/gradeTrace'
 import { PRIORITY } from '../engine/ensureEval'
+import { GRADE_MAX_ATTEMPTS } from '../config'
 
 vi.mock('../api/analyzer', () => ({ gradeMove: vi.fn() }))
 vi.mock('../engine/ensureEval', async (orig) => ({
@@ -43,42 +44,36 @@ function review(over: Partial<MoveReview>): MoveReview {
 const START = new Chess().fen()
 
 describe('useBranchReview', () => {
-  // Default: browser engine unavailable → payload omitted → backend searches
-  // (Phase-1 behaviour). The eval-attaching tests override this per case.
+  // Default: the browser has every eval; tests that need a failure override it.
   beforeEach(() => {
     vi.useFakeTimers()
     mockGrade.mockReset()
     mockEnsure.mockReset()
-    mockEnsure.mockResolvedValue(null)
+    mockEnsure.mockResolvedValue(cached([0.1, 0.2]))
   })
   afterEach(() => { vi.useRealTimers() })
 
   const base = {
     forkFen: START, forkPly: 0, gameMoves: [], depth: 18, multipv: 3,
-    reviewEngine: 'Stockfish 19', enabled: true,
+    enabled: true,
   }
 
-  it('grades each branch ply and threads the previous ply before-eval as the seed', async () => {
+  it("grades each branch ply, seeding ply i from the browser's eval two plies back", async () => {
     mockGrade
-      .mockResolvedValueOnce(review({ classification: 'inaccuracy', evalBefore: 0.2 }))
-      .mockResolvedValueOnce(review({ classification: 'blunder', evalBefore: 0.15 }))
+      .mockResolvedValueOnce(review({ classification: 'inaccuracy' }))
+      .mockResolvedValueOnce(review({ classification: 'blunder' }))
 
     const branch = node('e4', 'e5')
     const { result } = renderHook(() => useBranchReview({ ...base, branch }))
-
-    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
 
     expect(result.current.map((g) => [g.status, g.review?.classification])).toEqual([
       ['done', 'inaccuracy'],
       ['done', 'blunder'],
     ])
-    // Node 0: no seed (fork at start); node 1: seeded with node 0's before-eval.
-    expect(mockGrade.mock.calls[0][0]).toMatchObject({
-      fenBefore: START, uci: 'e2e4', prevBeforeEval: undefined,
-    })
-    expect(mockGrade.mock.calls[1][0]).toMatchObject({
-      fenBefore: branch[0].fen, uci: 'e7e5', prevBeforeEval: 0.2,
-    })
+    // Node 0: no seed (fork at start); node 1: the fork position's rank-1 score.
+    expect(mockGrade.mock.calls[0][0]).toMatchObject({ fenBefore: START, uci: 'e2e4', prevBeforeEval: undefined })
+    expect(mockGrade.mock.calls[1][0]).toMatchObject({ fenBefore: branch[0].fen, uci: 'e7e5', prevBefore: { cp: 10 } })
   })
 
   it("seeds node 0's before_opp from the game review's fork-incoming ply", async () => {
@@ -103,7 +98,7 @@ describe('useBranchReview', () => {
     expect(mockGrade).not.toHaveBeenCalled()
   })
 
-  // ── Hybrid: attach the browser's evals when available, else fall back to BE ──
+  // ── The browser is the only eval source ──
 
   it('attaches the frontend eval payload when both positions are cached deep', async () => {
     mockEnsure.mockResolvedValue(cached([0.1, 0.2])) // before & after resolve, 2 lines
@@ -118,48 +113,40 @@ describe('useBranchReview', () => {
     expect(arg.afterEval).toEqual({ cp: 10 })
   })
 
-  it('omits the payload (backend searches) when the browser engine is unavailable', async () => {
-    mockEnsure.mockResolvedValue(null)
-    mockGrade.mockResolvedValue(review({}))
-    renderHook(() => useBranchReview({ ...base, branch: node('e4') }))
-    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+  it('asks again for a failed eval, then marks the ply an error without asking the backend', async () => {
+    mockEnsure.mockResolvedValue(null) // e.g. a boot failure
+    const { result } = renderHook(() => useBranchReview({ ...base, branch: node('e4') }))
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
 
-    const arg = mockGrade.mock.calls[0][0]
-    expect(arg.beforeLines).toBeUndefined()
-    expect(arg.afterEval).toBeUndefined()
+    expect(result.current.map((g) => g.status)).toEqual(['error'])
+    expect(mockGrade).not.toHaveBeenCalled()
+    expect(mockEnsure.mock.calls.filter((c) => c[0] === START)).toHaveLength(GRADE_MAX_ATTEMPTS)
   })
 
-  it('attaches the payload on a frontend-sourced review (lite label, same version)', async () => {
-    mockEnsure.mockResolvedValue(cached([0.1, 0.2]))
-    mockGrade.mockResolvedValue(review({ evalBefore: 0.1 }))
-    renderHook(() => useBranchReview({
-      ...base, branch: node('e4'), reviewEngine: 'Stockfish 19 Lite',
-    }))
-    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
-
-    expect(mockGrade.mock.calls[0][0].beforeLines).toHaveLength(2)
+  it('a retry that finds the eval grades the ply', async () => {
+    mockEnsure.mockResolvedValueOnce(null) // the first before-position ask times out
+    mockGrade.mockResolvedValue(review({ classification: 'good' }))
+    const { result } = renderHook(() => useBranchReview({ ...base, branch: node('e4') }))
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+    expect(result.current.map((g) => g.status)).toEqual(['done'])
   })
 
-  it('omits the payload when review and browser engine identities differ', async () => {
-    mockEnsure.mockResolvedValue(cached([0.1, 0.2]))
-    mockGrade.mockResolvedValue(review({}))
-    renderHook(() => useBranchReview({
-      ...base, branch: node('e4'), reviewEngine: 'Candidate 1',
-    }))
-    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
-
-    expect(mockEnsure).not.toHaveBeenCalled()
-    expect(mockGrade.mock.calls[0][0].beforeLines).toBeUndefined()
-    expect(mockGrade.mock.calls[0][0].afterEval).toBeUndefined()
+  it('sends a single line for a forced move', async () => {
+    const forced = '7k/8/6K1/8/8/8/8/R7 b - - 0 1' // rook check: Kg8 only
+    mockEnsure.mockResolvedValue(cached([0]))
+    mockGrade.mockResolvedValue(review({ classification: 'forced' }))
+    const c = new Chess(forced); c.move('Kg8')
+    renderHook(() => useBranchReview({ ...base, forkFen: forced, branch: [{ fen: c.fen(), san: 'Kg8' }] }))
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+    expect(mockGrade.mock.calls[0][0].beforeLines).toEqual([{ uci: 'm0', cp: 0 }])
   })
 
-  it('omits the payload when the before-position has fewer than two lines', async () => {
-    mockEnsure.mockResolvedValue(cached([0.1])) // only one line → no after_second
-    mockGrade.mockResolvedValue(review({}))
-    renderHook(() => useBranchReview({ ...base, branch: node('e4') }))
-    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
-
-    expect(mockGrade.mock.calls[0][0].beforeLines).toBeUndefined()
+  it('treats fewer than two lines in an ordinary position as a missing eval', async () => {
+    mockEnsure.mockResolvedValue(cached([0.1]))
+    const { result } = renderHook(() => useBranchReview({ ...base, branch: node('e4') }))
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+    expect(result.current.map((g) => g.status)).toEqual(['error'])
+    expect(mockGrade).not.toHaveBeenCalled()
   })
 
   it('sends before_lines but no after_eval for a terminal (checkmate) branch ply', async () => {
@@ -193,8 +180,8 @@ describe('useBranchReview', () => {
     expect(mine.map((t) => [t.ply, t.outcome, t.pass])).toEqual([
       [0, 'aborted', 1], [0, 'done', 2], [1, 'done', 1],
     ])
-    // Engine unavailable → backend searched; the restart names its cause.
-    expect(mine[1]).toMatchObject({ causes: ['branch'], backend: { path: 'search' }, classification: 'good' })
+    // The restart names its cause.
+    expect(mine[1]).toMatchObject({ causes: ['branch'], classification: 'good' })
     expect(mine[2].causes).toEqual([])
   })
 

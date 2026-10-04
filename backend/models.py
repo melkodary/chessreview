@@ -75,10 +75,10 @@ class MoveReviewRequest(BaseModel):
     PGN: the position and move stand alone.
 
     Two feeders, dispatched by field-presence (main.grade_move): a complete
-    frontend-eval payload (`before_lines` >= 2 lines AND `after_eval`, or the
-    after-position is terminal) grades with no backend engine (review.classify_move);
-    otherwise the backend searches (review.review_move). A partial/malformed
-    payload falls back to the engine rather than being half-trusted."""
+    frontend-eval payload (`before_lines` >= 2 lines, or 1 for a forced move, AND
+    `after_eval`, or the after-position is terminal) grades with no backend engine
+    (review.classify_move); otherwise the backend searches (review.review_move). The
+    app always sends one; the search path stays for other clients (2026-10-04)."""
 
     fen_before: str = Field(..., min_length=1, max_length=120)
     uci: str = Field(..., min_length=4, max_length=5)

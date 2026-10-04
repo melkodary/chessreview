@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { ReviewMeta } from '../api/analyzer'
 import type { ExploreNode } from '../hooks/useBoardExploration'
 import { useGameReview } from '../hooks/useGameReview'
-import { gradesWithBrowserEvals, useBranchReview } from '../hooks/useBranchReview'
+import { useBranchReview } from '../hooks/useBranchReview'
 import { useSpeculation } from '../hooks/useSpeculation'
 import { useProvisionalCurve } from '../hooks/useProvisionalCurve'
 import type { PositionStep } from '../hooks/useGameViewer'
@@ -45,14 +45,14 @@ export function ReviewProvider({
   const branchGrades = useBranchReview({
     branch, forkFen, forkPly, gameMoves: review.moves,
     whiteElo: meta?.whiteElo, blackElo: meta?.blackElo,
-    depth: reviewDepth, multipv: reviewMultiPv, reviewEngine: review.engine,
+    depth: reviewDepth, multipv: reviewMultiPv,
     enabled: gradingEnabled,
   })
 
   // Review tab only (grading is Review-only): the game position, or the branch tip.
   useSpeculation({
     fen: branch.at(-1)?.fen ?? forkFen, depth: reviewDepth, multipv: reviewMultiPv,
-    enabled: SPECULATE && (gradingEnabled || sweepEnabled) && gradesWithBrowserEvals(review.engine),
+    enabled: SPECULATE && (gradingEnabled || sweepEnabled),
   })
 
   // Lifted for the third time for the same reason, plus one of its own: the

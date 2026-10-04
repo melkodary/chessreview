@@ -167,6 +167,9 @@ def test_batch_and_deviation_planners_share_typed_shape():
 
 # ── Dispatch: _has_complete_eval_payload ────────────────────────────────────
 
+FORCED = "7k/8/6K1/8/8/8/8/R7 b - - 0 1"  # rook check: Kg8 is the only move
+
+
 def _req(uci="e2e4", fen=START, **kw):
     return MoveReviewRequest(fen_before=fen, uci=uci, **kw)
 
@@ -178,6 +181,21 @@ def test_dispatch_no_payload_uses_engine():
 def test_dispatch_one_line_not_complete():
     req = _req(before_lines=[{"uci": "e2e4", "cp": 0}], after_eval={"cp": 0})
     assert not _has_complete_eval_payload(req)
+
+
+def test_dispatch_one_line_complete_for_the_only_legal_move():
+    req = _req(uci="h8g8", fen=FORCED, before_lines=[{"uci": "h8g8", "cp": 0}], after_eval={"cp": 0})
+    assert _has_complete_eval_payload(req)
+
+
+def test_endpoint_grades_a_forced_move_from_one_line_without_engine():
+    payload = {
+        "fen_before": FORCED, "uci": "h8g8",
+        "before_lines": [{"uci": "h8g8", "cp": 0}], "after_eval": {"cp": 0},
+    }
+    r = client.post("/reviews/move", json=payload)
+    assert r.status_code == 200
+    assert r.json()["classification"] == "forced"
 
 
 def test_dispatch_two_lines_plus_after_eval_complete():
