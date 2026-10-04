@@ -7,6 +7,7 @@ import type { AnalysisLine } from '../api/analyzer'
 import { gradeMove } from '../api/analyzer'
 import { ensureEval } from '../engine/ensureEval'
 import type { CachedPosition } from '../engine/evalCache'
+import { gradeTrace } from '../engine/gradeTrace'
 
 vi.mock('../api/analyzer', () => ({ gradeMove: vi.fn() }))
 vi.mock('../engine/ensureEval', () => ({ ensureEval: vi.fn() }))
@@ -168,5 +169,29 @@ describe('useBranchReview', () => {
     expect(last.uci).toBe('d8h4')
     expect(last.beforeLines).toHaveLength(2)
     expect(last.afterEval).toBeUndefined() // terminal after-position: BE synthesizes it
+  })
+
+  it('traces an attempt aborted by a branch edit, then the re-grade that names the cause', async () => {
+    const from = gradeTrace.length
+    let release!: (r: MoveReview) => void
+    mockGrade
+      .mockImplementationOnce(() => new Promise<MoveReview>((r) => { release = r }))
+      .mockResolvedValue(review({ classification: 'good' }))
+    const [e4, e5] = node('e4', 'e5')
+    const { rerender } = renderHook((p: { branch: typeof e4[] }) => useBranchReview({ ...base, ...p }), {
+      initialProps: { branch: [e4] },
+    })
+    await act(async () => { await vi.advanceTimersByTimeAsync(300) })
+    rerender({ branch: [e4, e5] })
+    release(review({ classification: 'best' })) // lands after the abort: discarded
+    await act(async () => { await vi.advanceTimersByTimeAsync(300) })
+
+    const mine = gradeTrace.slice(from)
+    expect(mine.map((t) => [t.ply, t.outcome, t.pass])).toEqual([
+      [0, 'aborted', 1], [0, 'done', 2], [1, 'done', 1],
+    ])
+    // Engine unavailable → backend searched; the restart names its cause.
+    expect(mine[1]).toMatchObject({ causes: ['branch'], backend: { path: 'search' }, classification: 'good' })
+    expect(mine[2].causes).toEqual([])
   })
 })

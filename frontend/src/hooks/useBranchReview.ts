@@ -4,6 +4,7 @@ import type { ExploreNode } from './useBoardExploration'
 import type { MoveReview } from '../api/review'
 import { gradeMove, type GradeLine, type GradeMoveEval } from '../api/analyzer'
 import { ensureEval } from '../engine/ensureEval'
+import { beginAttempt, noteNeeded, recordGrade, type GradeTrace } from '../engine/gradeTrace'
 import { beforeLinesFrom, isTerminalFen, scoreOf } from '../engine/reviewPayload'
 import { BRANCH_GRADE_DEBOUNCE_MS, GRADE_WITH_FRONTEND_ENGINE } from '../config'
 import { REVIEW_ENGINE_NAME, WASM_ENGINE_NAME } from '../storage'
@@ -43,16 +44,23 @@ const EMPTY_GRADES: BranchGrade[] = []
 // all resolve to an empty payload → backend engine (guaranteed parity).
 async function frontendEvalPayload(
   predFen: string, afterFen: string, depth: number, multipv: number,
-  reviewEngine: string | null, signal: AbortSignal,
+  reviewEngine: string | null, signal: AbortSignal, trace: Partial<GradeTrace>,
 ): Promise<{ beforeLines?: GradeLine[]; afterEval?: GradeMoveEval }> {
   // Same major version either side, so a branch grade may mix nets (2026-07-16).
   const sameVersion = reviewEngine === REVIEW_ENGINE_NAME || reviewEngine === WASM_ENGINE_NAME
-  if (!GRADE_WITH_FRONTEND_ENGINE || !sameVersion) return {}
-  const before = await ensureEval(predFen, depth, multipv, signal)
+  if (!GRADE_WITH_FRONTEND_ENGINE || !sameVersion) {
+    trace.feSkip = GRADE_WITH_FRONTEND_ENGINE ? 'engine-mismatch' : 'flag-off'
+    trace.reviewEngine = reviewEngine
+    return {}
+  }
+  const before = await ensureEval(predFen, depth, multipv, signal, (o) => { trace.before = o })
   const beforeLines = before ? beforeLinesFrom(before) : null
   if (!beforeLines) return {}
-  if (isTerminalFen(afterFen)) return { beforeLines }
-  const after = await ensureEval(afterFen, depth, multipv, signal)
+  if (isTerminalFen(afterFen)) {
+    trace.after = 'terminal'
+    return { beforeLines }
+  }
+  const after = await ensureEval(afterFen, depth, multipv, signal, (o) => { trace.after = o })
   if (!after || !after.lines[0]) return {}
   return { beforeLines, afterEval: scoreOf(after.lines[0]) }
 }
@@ -73,6 +81,10 @@ export function useBranchReview({
   // carry forward verdicts that survived a branch edit.
   const latest = useRef<BranchGrade[]>([])
   useEffect(() => { latest.current = grades }, [grades])
+  // Grade-trace bookkeeping: the inputs the last effect run saw, and what has
+  // changed since the last pass started (a cleared debounce keeps its causes).
+  const lastInputs = useRef<Record<string, unknown> | null>(null)
+  const pendingCauses = useRef(new Set<string>())
 
   const branchKey = branch.map((n) => n.fen).join('|')
   // branch[0]'s before_opp seed: the eval before the game's fork-incoming ply.
@@ -86,7 +98,17 @@ export function useBranchReview({
     // Idle when not exploring: leave state untouched (the hook returns [] below)
     // and grade nothing. Re-enabling reconciles against whatever survived, so a
     // tab toggle that keeps the same branch doesn't re-grade it.
+    const inputs: Record<string, unknown> = {
+      enabled, branch: branchKey, seedEval, whiteElo, blackElo, depth, multipv,
+      reviewEngine, forkFen, forkPly,
+    }
+    const prevInputs = lastInputs.current
+    if (prevInputs) {
+      for (const k in inputs) if (inputs[k] !== prevInputs[k]) pendingCauses.current.add(k)
+    }
+    lastInputs.current = inputs
     if (!enabled || branch.length === 0) return
+    branch.forEach((n) => noteNeeded(n.fen))
     const ctrl = new AbortController()
     let cancelled = false
 
@@ -101,6 +123,8 @@ export function useBranchReview({
       })
       setGrades(working.slice())
       latest.current = working
+      const causes = [...pendingCauses.current]
+      pendingCauses.current.clear()
 
       for (let i = 0; i < branch.length; i++) {
         if (cancelled) return
@@ -119,23 +143,38 @@ export function useBranchReview({
           continue
         }
 
+        const attempt = beginAttempt(branch[i].fen)
+        const passStart = performance.now()
+        const trace: Partial<GradeTrace> = {}
+        const record = (outcome: GradeTrace['outcome'], classification?: string) =>
+          recordGrade(branch[i].fen, {
+            ...trace, ply: i, san: branch[i].san, outcome, classification,
+            sinceMoveMs: attempt.sinceMove(), passMs: performance.now() - passStart,
+            pass: attempt.pass, causes: attempt.pass > 1 ? causes : [],
+          })
         try {
           // Hybrid: attach the browser's own evals when available (backend
           // skips Stockfish), else omit → backend searches. A superseding edit
           // aborts mid-search (latest-wins); bail before committing a verdict.
           const evalPayload = await frontendEvalPayload(
-            predFen, branch[i].fen, depth, multipv, reviewEngine, ctrl.signal,
+            predFen, branch[i].fen, depth, multipv, reviewEngine, ctrl.signal, trace,
           )
-          if (cancelled) return
+          if (cancelled) return record('aborted')
+          const sent = performance.now()
+          trace.backend = { path: evalPayload.beforeLines ? 'classify' : 'search', ms: 0 }
           const review = await gradeMove(
             { fenBefore: predFen, uci, whiteElo, blackElo, depth, multipv, prevBeforeEval, ...evalPayload },
             ctrl.signal,
           )
-          if (cancelled) return
+          trace.backend.ms = performance.now() - sent
+          if (cancelled) return record('aborted')
           working[i] = { fen: branch[i].fen, status: 'done', review }
+          record('done', review.classification)
         } catch {
-          if (cancelled) return
+          if (cancelled) return record('aborted')
+          if (trace.backend) trace.backend.failed = true
           working[i] = { fen: branch[i].fen, status: 'error' }
+          record('error')
         }
         setGrades(working.slice())
         latest.current = working

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AnalysisLine } from '../api/analyzer'
 
-vi.mock('./stockfish', () => ({ engine: { analyze: vi.fn() } }))
+vi.mock('./stockfish', () => ({ engine: { analyze: vi.fn(), getStatus: () => ({ url: '', state: 'ready' }) } }))
 
 import { engine } from './stockfish'
 import { ensureEval } from './ensureEval'
