@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { OnLines, SearchLimit } from '../engine/stockfish'
-import { useStreamingAnalysis } from './useStreamingAnalysis'
+import { resetStreamingAnalysis, useStreamingAnalysis } from './useStreamingAnalysis'
 import { clearEvalCache } from '../engine/evalCache'
 
 // Drive the engine singleton from the test: capture the onLines callback so we
@@ -50,6 +50,7 @@ beforeEach(() => {
   analyzeResult = Promise.resolve()
   throttleMs = 250
   clearEvalCache()
+  resetStreamingAnalysis()
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -291,18 +292,48 @@ describe('useStreamingAnalysis display channel', () => {
     })
   })
 
-  it('resumes at the cached depth on remount and hides shallower re-search frames', async () => {
+  it('keeps searching through a tab switch, and a remount re-attaches without a new search', async () => {
     const first = renderHook(() => useStreamingAnalysis(FEN_A, 20_000, 3, THREADS, HASH))
     await act(async () => { calls[0].onLines([PV, PV2], 18, false) })
     first.unmount() // tab switch
+    expect(calls[0].signal?.aborted).toBe(false)
+    await act(async () => { calls[0].onLines([PV, PV2], 21, false) }) // ran on while away
 
     const { result } = renderHook(() => useStreamingAnalysis(FEN_A, 20_000, 3, THREADS, HASH))
-    expect(result.current.currentDepth).toBe(18)
-    expect(result.current.displayLines).toEqual([PV, PV2])
+    expect(calls).toHaveLength(1)
+    expect(result.current).toMatchObject({ currentDepth: 21, displayLines: [PV, PV2], loading: true })
+    await act(async () => { calls[0].onLines([PV, PV2], 23, true) })
+    expect(result.current).toMatchObject({ currentDepth: 23, loading: false })
+  })
 
-    await act(async () => { calls[1].onLines([LINE], 5, false) })
+  it('shows a request searched to its full budget as settled, without searching again', async () => {
+    const first = renderHook(() => useStreamingAnalysis(FEN_A, 20_000, 3, THREADS, HASH))
+    await act(async () => { calls[0].onLines([PV, PV2], 24, true) })
+    first.unmount()
+
+    const { result } = renderHook(() => useStreamingAnalysis(FEN_A, 20_000, 3, THREADS, HASH))
+    act(() => { vi.advanceTimersByTime(1_000) })
+    expect(calls).toHaveLength(1)
+    expect(result.current).toMatchObject({ currentDepth: 24, displayLines: [PV, PV2], loading: false })
+  })
+
+  it('re-searches a position whose search was replaced, hiding depths the cache already holds', async () => {
+    const { result, rerender } = renderHook(
+      ({ fen }) => useStreamingAnalysis(fen, 20_000, 3, THREADS, HASH),
+      { initialProps: { fen: FEN_A } },
+    )
+    await act(async () => { calls[0].onLines([PV, PV2], 18, false) })
+    act(() => { vi.advanceTimersByTime(300) })
+    rerender({ fen: FEN_B }) // navigating on replaces A's search
+    expect(calls[0].signal?.aborted).toBe(true) // at once, unlike a tab switch's unmount
+    act(() => { vi.advanceTimersByTime(300) })
+    rerender({ fen: FEN_A })
+    act(() => { vi.advanceTimersByTime(300) })
+    const again = calls.at(-1)!
+    expect(again.fen).toBe(FEN_A)
+    await act(async () => { again.onLines([LINE], 5, false) })
     expect(result.current.currentDepth).toBe(18)
-    await act(async () => { calls[1].onLines([PV, PV2], 19, false) })
+    await act(async () => { again.onLines([PV, PV2], 19, false) })
     expect(result.current.currentDepth).toBe(19)
   })
 })

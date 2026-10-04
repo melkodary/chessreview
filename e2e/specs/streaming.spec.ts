@@ -146,3 +146,23 @@ test('depth badge stays visible after analysis settles', async ({ page }) => {
   await expect(viewer.bestLines()).toHaveCount(3, { timeout: 15000 })
   await expect(viewer.depthBadge()).toBeVisible()
 })
+
+// A tab flip used to abort the search, and the return re-ran it with the same budget:
+// the badge sat frozen at the old depth until that budget ran out. Now the search
+// runs on while Review is open, and the return shows where it got to.
+test('a tab flip keeps the search running: the return shows its result, not a frozen re-search', async ({ page }) => {
+  const viewer = new AnalyzeViewerPage(page)
+  await viewer.goto(USER, GAME_ID)
+  await expect(page.getByText('No analysis yet.')).toBeVisible()
+  await viewer.nextMove()
+  await expect(viewer.depthBadge()).toBeVisible({ timeout: 15000 })
+  await expect(viewer.settledDepthBadge()).toHaveCount(0) // leave mid-search
+  const left = Number((await viewer.depthBadge().textContent())!.slice(1))
+
+  await viewer.openTab('Review')
+  await page.waitForTimeout(8000) // the time away is the scenario: long enough to finish
+  await viewer.openTab('Analysis')
+
+  await expect(viewer.settledDepthBadge()).toBeVisible({ timeout: 1000 })
+  expect(Number((await viewer.depthBadge().textContent())!.slice(1))).toBeGreaterThan(left)
+})
