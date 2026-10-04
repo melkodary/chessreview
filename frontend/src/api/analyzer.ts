@@ -182,6 +182,9 @@ interface GradeMoveRequest {
   depth: number
   multipv: number
   prevBeforeEval?: number
+  // The same seed as the previous position's rank-1 score, so a ply needn't wait
+  // for the previous ply's verdict; at most one of the two.
+  prevBefore?: GradeMoveEval
   // Optional frontend-eval payload (browser WASM search). Present + complete →
   // backend skips the engine; absent/partial → backend searches.
   beforeLines?: GradeLine[]
@@ -196,6 +199,7 @@ export async function gradeMove(req: GradeMoveRequest, signal?: AbortSignal): Pr
       white_elo: req.whiteElo, black_elo: req.blackElo,
       depth: req.depth, multipv: req.multipv,
       prev_before_eval: req.prevBeforeEval,
+      prev_before: req.prevBefore,
       before_lines: req.beforeLines?.map((l) => ({
         uci: l.uci, cp: l.cp, mate: l.mate,
       })),

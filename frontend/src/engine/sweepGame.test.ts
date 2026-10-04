@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AnalysisLine } from '../api/analyzer'
 
-vi.mock('./stockfish', () => ({ engine: { analyze: vi.fn(), getStatus: () => ({ url: '', state: 'ready' }) } }))
+vi.mock('./stockfish', () => ({
+  engine: { analyze: vi.fn(), getStatus: () => ({ url: '', state: 'ready' }), onIdle: () => () => {} },
+}))
 
 import { engine } from './stockfish'
 import { sweepGame, type SweepPoint } from './sweepGame'
 import { putEval, clearEvalCache } from './evalCache'
+import { resetEvalScheduler } from './ensureEval'
 
 const mockAnalyze = vi.mocked(engine.analyze)
 
@@ -18,7 +21,7 @@ function fresh() {
 }
 
 describe('sweepGame', () => {
-  beforeEach(() => { clearEvalCache(); mockAnalyze.mockReset() })
+  beforeEach(() => { clearEvalCache(); resetEvalScheduler(); mockAnalyze.mockReset() })
 
   it('sweeps positions in order, one search per ply', async () => {
     mockAnalyze.mockImplementation((_fen, limit, _mpv, onLines) => {

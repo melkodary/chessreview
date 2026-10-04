@@ -27,8 +27,10 @@ export class AnalyzeViewerPage {
     return this.page.getByTestId('board')
   }
 
-  nextMove() {
-    return this.page.keyboard.press('ArrowRight')
+  // After the shell's first `move=` sync: a press before it is overwritten back to 0.
+  async nextMove() {
+    await expect(this.page).toHaveURL(/[?&]move=\d/)
+    await this.page.keyboard.press('ArrowRight')
   }
 
   depthBadge() {

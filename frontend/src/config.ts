@@ -37,6 +37,9 @@ export const ENGINE_BOOT_TIMEOUT_MS = num(import.meta.env.VITE_ENGINE_BOOT_TIMEO
 // A depth-limited WASM search that has not reached its depth by now is given up
 // (→ backend fallback): the 19 lite build can stall short of depth with a warm hash.
 export const ENGINE_DEPTH_TIMEOUT_MS = num(import.meta.env.VITE_ENGINE_DEPTH_TIMEOUT_MS, 30_000)
+// How long a stopped search may take to answer with its `bestmove` before the
+// worker is replaced: the engine has ignored `stop` for 80s+ once.
+export const ENGINE_STOP_GRACE_MS = num(import.meta.env.VITE_ENGINE_STOP_GRACE_MS, 3_000)
 // Threads for depth-limited searches (grading, sweeps), capped by the user's setting.
 // Fewer WASM threads reach a fixed depth sooner: 1 thread median 1.1s / max 4.0s,
 // 8 threads 2.6s / 30s+ (spec 2026-10-04-fast-deviation-grading).
@@ -63,11 +66,6 @@ export const ANALYSIS_THROTTLE_MS      = num(import.meta.env.VITE_ANALYSIS_THROT
 // searches (guaranteed parity). Doubles as a live parity switch. No Settings UI
 // this phase — a plain env default (see the phase-2 deviation-grading spec).
 export const GRADE_WITH_FRONTEND_ENGINE = bool(import.meta.env.VITE_GRADE_WITH_FRONTEND_ENGINE, true)
-
-// Trailing-edge debounce on branch grading: how long a branch must stop growing
-// before the grader fires. Blitzing moves out shouldn't search every half-built
-// position; too long and the first verdict feels stuck behind a timer.
-export const BRANCH_GRADE_DEBOUNCE_MS = num(import.meta.env.VITE_BRANCH_GRADE_DEBOUNCE_MS, 200)
 
 // Provisional in-browser eval curve (engine/sweepGame.ts): shallow, rank-1-only
 // so a laptop sweep lands inside the review wait (lab 101 — MultiPV 1 is 3.3x

@@ -122,6 +122,12 @@ test('deviating on Review shows a branch-sourced eval bar; stepping back to the 
   // Existing mocked review hydrates quickly; wait for its game-line value.
   await expect(page.getByText('95.0').first()).toBeVisible({ timeout: 5000 })
 
+  // Hold the grade until the in-flight state is asserted: a single-thread
+  // depth-8 search can land it before the next line runs.
+  let release!: () => void
+  const held = new Promise<void>((r) => { release = r })
+  await page.route('**/reviews/move', async (route) => { await held; await route.fallback() })
+
   // Still on the game line (the fork): the bar reads the game review data —
   // ply 1 (e4) hasn't been played yet, so it shows the pre-move eval, 0.0.
   await expect(viewer.evalBar()).toBeVisible()
@@ -134,6 +140,7 @@ test('deviating on Review shows a branch-sourced eval bar; stepping back to the 
   // The branch ply is still grading (real WASM engine boot + search) — the bar
   // holds the fork's last value rather than blanking, proving the freeze.
   await expect(viewer.evalBar().locator('span')).toHaveText('0.0')
+  release()
 
   // The grade lands (mocked verdict: eval_after_played 1.2) and the label
   // updates to it — the branch's own number, not the game line's.

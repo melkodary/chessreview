@@ -235,3 +235,40 @@ def test_endpoint_before_line_needs_exactly_one_score():
     }
     r = client.post("/reviews/move", json=payload)
     assert r.status_code == 422
+
+
+# ── prev_before: the seed as a score, so a ply needs no earlier verdict ─────
+
+def _seeded(seed: dict) -> dict:
+    b = chess.Board(); b.push_san("e4")
+    payload = {
+        "fen_before": b.fen(), "uci": "g8h6",
+        "before_lines": [{"uci": "e7e5", "cp": 0}, {"uci": "c7c5", "cp": -10}],
+        "after_eval": {"cp": 160},
+        **seed,
+    }
+    r = client.post("/reviews/move", json=payload)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_prev_before_score_grades_like_the_pawns_seed():
+    assert _seeded({"prev_before": {"cp": -140}}) == _seeded({"prev_before_eval": -1.4})
+    # Mate folds to +-10000 cp, the whole-game review's convention (not 99.99's 9999).
+    assert _seeded({"prev_before": {"mate": -3}}) == _seeded({"prev_before_eval": -100.0})
+
+
+def test_prev_before_cp_round_trips_through_the_pawns_seed():
+    from main import _seed_eval
+    for cp in range(-9999, 10000):
+        req = MoveReviewRequest(fen_before=START, uci="e2e4", prev_before={"cp": cp})
+        assert int(round(_seed_eval(req) * 100)) == cp
+
+
+def test_endpoint_rejects_both_seed_forms():
+    payload = {
+        "fen_before": START, "uci": "e2e4", "prev_before_eval": 0.1, "prev_before": {"cp": 10},
+        "before_lines": [{"uci": "e2e4", "cp": 0}, {"uci": "d2d4", "cp": 5}],
+        "after_eval": {"cp": 0},
+    }
+    assert client.post("/reviews/move", json=payload).status_code == 422

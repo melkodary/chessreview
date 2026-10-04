@@ -92,10 +92,19 @@ class MoveReviewRequest(BaseModel):
     # feeding EvalPoints.before_opp — the opponent-swing input for great/miss.
     # None on the first graded move off the game line's opening (no prior ply).
     prev_before_eval: float | None = Field(default=None)
+    # The same seed as the previous position's rank-1 engine score (white-POV),
+    # so a ply can be graded without waiting for the previous ply's verdict.
+    prev_before: MoveEval | None = Field(default=None)
     # Optional frontend-eval payload. When complete, grading skips the backend
     # engine — see the class docstring + review.classify_move.
     before_lines: list[BeforeLine] | None = Field(default=None, max_length=8)
     after_eval: MoveEval | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def _one_seed(self):
+        if self.prev_before is not None and self.prev_before_eval is not None:
+            raise ValueError("send prev_before or prev_before_eval, not both")
+        return self
 
 
 class StoredMove(BaseModel):

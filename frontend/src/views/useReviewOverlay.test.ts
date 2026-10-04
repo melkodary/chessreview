@@ -132,4 +132,18 @@ describe('useReviewOverlay branch eval bar', () => {
     rerender({ ...base, branchIndex: 1, branchGrades: [differentBranch] })
     expect(lastOverlay?.evalBar).toBeNull()
   })
+
+  it("holds the fork's game-line value while a new deviation's first ply grades", () => {
+    const moves = [move({ ply: 1, evalAfterPlayed: 0.3 })]
+    const { rerender } = setup({
+      ...base, moves, moveIndex: 1, done: true, exploring: true, branchIndex: 0, branchGrades: [],
+    })
+    expect(lastOverlay?.evalBar).toEqual({ evaluation: 0.3, mate: null, stale: false })
+
+    // The first grades arrive (pending): no earlier branch to protect, so the fork's value holds.
+    const pending = grade({ fen: 'p1', status: 'pending' })
+    rerender({ ...base, moves, moveIndex: 1, done: true, branchIndex: 1, branchGrades: [pending] })
+    expect(lastOverlay?.evalBar).toEqual({ evaluation: 0.3, mate: null, stale: true })
+  })
 })
+

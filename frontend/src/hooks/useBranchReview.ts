@@ -3,10 +3,10 @@ import { Chess } from 'chess.js'
 import type { ExploreNode } from './useBoardExploration'
 import type { MoveReview } from '../api/review'
 import { gradeMove, type GradeLine, type GradeMoveEval } from '../api/analyzer'
-import { ensureEval } from '../engine/ensureEval'
+import { ensureEval, PRIORITY } from '../engine/ensureEval'
 import { beginAttempt, noteNeeded, recordGrade, type GradeTrace } from '../engine/gradeTrace'
 import { beforeLinesFrom, isTerminalFen, scoreOf } from '../engine/reviewPayload'
-import { BRANCH_GRADE_DEBOUNCE_MS, GRADE_WITH_FRONTEND_ENGINE } from '../config'
+import { GRADE_WITH_FRONTEND_ENGINE } from '../config'
 import { REVIEW_ENGINE_NAME, WASM_ENGINE_NAME } from '../storage'
 
 // One branch ply's grading status. `fen` (the node's resulting FEN) is the
@@ -37,15 +37,13 @@ interface Params {
 // this array (useReviewOverlay's eval-bar memo among them).
 const EMPTY_GRADES: BranchGrade[] = []
 
-// Assemble the frontend-eval payload for one ply, or {} to let the backend
-// search. Reuses the browser's own eval-bar work (ensureEval), driving a WASM
-// search only on a cache miss; a terminal after-position needs no after-eval
-// (the backend synthesizes it). Flag off, engine unavailable, or too few lines
-// all resolve to an empty payload → backend engine (guaranteed parity).
+// One ply's frontend-eval payload, or {} to let the backend search. A terminal
+// after-position needs no after-eval (the backend synthesizes it); `prevFen`'s
+// rank-1 score is the ply's seed.
 async function frontendEvalPayload(
-  predFen: string, afterFen: string, depth: number, multipv: number,
-  reviewEngine: string | null, signal: AbortSignal, trace: Partial<GradeTrace>,
-): Promise<{ beforeLines?: GradeLine[]; afterEval?: GradeMoveEval }> {
+  predFen: string, afterFen: string, prevFen: string | null, depth: number, multipv: number,
+  reviewEngine: string | null, signal: AbortSignal, trace: Partial<GradeTrace>, priority: number,
+): Promise<{ beforeLines?: GradeLine[]; afterEval?: GradeMoveEval; prevBefore?: GradeMoveEval }> {
   // Same major version either side, so a branch grade may mix nets (2026-07-16).
   const sameVersion = reviewEngine === REVIEW_ENGINE_NAME || reviewEngine === WASM_ENGINE_NAME
   if (!GRADE_WITH_FRONTEND_ENGINE || !sameVersion) {
@@ -53,25 +51,24 @@ async function frontendEvalPayload(
     trace.reviewEngine = reviewEngine
     return {}
   }
-  const before = await ensureEval(predFen, depth, multipv, signal, (o) => { trace.before = o })
+  const terminal = isTerminalFen(afterFen)
+  const [before, after, prev] = await Promise.all([
+    ensureEval(predFen, depth, multipv, signal, { priority, onOutcome: (o) => { trace.before = o } }),
+    terminal ? null : ensureEval(afterFen, depth, multipv, signal, { priority, onOutcome: (o) => { trace.after = o } }),
+    prevFen ? ensureEval(prevFen, depth, multipv, signal, { priority }) : null,
+  ])
+  if (terminal) trace.after = 'terminal'
+  const prevBefore = prev?.lines[0] ? scoreOf(prev.lines[0]) : undefined
   const beforeLines = before ? beforeLinesFrom(before) : null
-  if (!beforeLines) return {}
-  if (isTerminalFen(afterFen)) {
-    trace.after = 'terminal'
-    return { beforeLines }
-  }
-  const after = await ensureEval(afterFen, depth, multipv, signal, (o) => { trace.after = o })
-  if (!after || !after.lines[0]) return {}
-  return { beforeLines, afterEval: scoreOf(after.lines[0]) }
+  if (!beforeLines) return { prevBefore }
+  if (terminal) return { beforeLines, prevBefore }
+  if (!after?.lines[0]) return { prevBefore }
+  return { beforeLines, afterEval: scoreOf(after.lines[0]), prevBefore }
 }
 
-// Grades an exploration branch ply-by-ply through the backend classifier
-// (POST /reviews/move), the same rules a whole-game review uses. Sequential by
-// design: ply i's `prev_before_eval` seed is ply i−1's before-eval, so grading
-// walks the branch front-to-back, a wavefront of pending → done. Debounced so
-// blitzing moves doesn't fire the engine on every half-built position; a branch
-// edit aborts the in-flight grade (latest-wins) and preserves already-graded
-// nodes whose FEN still matches.
+// Grades an exploration branch through the backend classifier (POST /reviews/move).
+// Plies are independent given evals: the newest ply's positions are searched first,
+// older ones backfill, and a branch edit's re-ask rejoins searches still running.
 export function useBranchReview({
   branch, forkFen, forkPly, gameMoves, whiteElo, blackElo, depth, multipv,
   reviewEngine, enabled,
@@ -82,7 +79,7 @@ export function useBranchReview({
   const latest = useRef<BranchGrade[]>([])
   useEffect(() => { latest.current = grades }, [grades])
   // Grade-trace bookkeeping: the inputs the last effect run saw, and what has
-  // changed since the last pass started (a cleared debounce keeps its causes).
+  // changed since the last pass started (a pass cancelled before it ran keeps them).
   const lastInputs = useRef<Record<string, unknown> | null>(null)
   const pendingCauses = useRef(new Set<string>())
 
@@ -112,7 +109,9 @@ export function useBranchReview({
     const ctrl = new AbortController()
     let cancelled = false
 
-    const timer = setTimeout(async () => {
+    // A microtask, not the effect body: setState is async here, as the repo's hook rules want.
+    void Promise.resolve().then(() => {
+      if (cancelled) return
       // Reconcile: keep done verdicts whose node still matches by FEN, else
       // reset to pending (a diverged position must be re-graded).
       const working: BranchGrade[] = branch.map((node, i) => {
@@ -121,26 +120,23 @@ export function useBranchReview({
           ? prev
           : { fen: node.fen, status: 'pending' as const }
       })
-      setGrades(working.slice())
-      latest.current = working
+      const commit = () => { setGrades(working.slice()); latest.current = working }
+      commit()
       const causes = [...pendingCauses.current]
       pendingCauses.current.clear()
 
-      for (let i = 0; i < branch.length; i++) {
-        if (cancelled) return
-        if (working[i].status === 'done') continue
-
+      // Verdicts as promises: the seed's fallback when the browser holds no eval for it.
+      const verdicts: Promise<MoveReview | undefined>[] = []
+      const gradePly = async (i: number, priority: number): Promise<MoveReview | undefined> => {
         const predFen = i === 0 ? forkFen : branch[i - 1].fen
-        const prevBeforeEval = i === 0 ? seedEval : working[i - 1].review?.evalBefore
-
         let uci: string
         try {
           const move = new Chess(predFen).move(branch[i].san)
           uci = move.from + move.to + (move.promotion ?? '')
         } catch {
           working[i] = { fen: branch[i].fen, status: 'error' }
-          setGrades(working.slice())
-          continue
+          commit()
+          return undefined
         }
 
         const attempt = beginAttempt(branch[i].fen)
@@ -154,40 +150,53 @@ export function useBranchReview({
           })
         try {
           // Hybrid: attach the browser's own evals when available (backend
-          // skips Stockfish), else omit → backend searches. A superseding edit
-          // aborts mid-search (latest-wins); bail before committing a verdict.
-          const evalPayload = await frontendEvalPayload(
-            predFen, branch[i].fen, depth, multipv, reviewEngine, ctrl.signal, trace,
+          // skips Stockfish), else omit → backend searches.
+          const prevFen = i === 0 ? null : i === 1 ? forkFen : branch[i - 2].fen
+          const { prevBefore, ...evalPayload } = await frontendEvalPayload(
+            predFen, branch[i].fen, prevFen, depth, multipv, reviewEngine, ctrl.signal, trace, priority,
           )
-          if (cancelled) return record('aborted')
+          // Ply 0's seed is the game review's; later plies' the previous position's
+          // browser eval, else the previous ply's verdict.
+          const seed = i === 0 ? { prevBeforeEval: seedEval }
+            : prevBefore ? { prevBefore }
+              : { prevBeforeEval: (await verdicts[i - 1])?.evalBefore }
+          if (cancelled) { record('aborted'); return undefined }
           const sent = performance.now()
           trace.backend = { path: evalPayload.beforeLines ? 'classify' : 'search', ms: 0 }
           const review = await gradeMove(
-            { fenBefore: predFen, uci, whiteElo, blackElo, depth, multipv, prevBeforeEval, ...evalPayload },
+            { fenBefore: predFen, uci, whiteElo, blackElo, depth, multipv, ...seed, ...evalPayload },
             ctrl.signal,
           )
           trace.backend.ms = performance.now() - sent
-          if (cancelled) return record('aborted')
+          if (cancelled) { record('aborted'); return undefined }
           working[i] = { fen: branch[i].fen, status: 'done', review }
           record('done', review.classification)
+          commit()
+          return review
         } catch {
-          if (cancelled) return record('aborted')
+          if (cancelled) { record('aborted'); return undefined }
           if (trace.backend) trace.backend.failed = true
           working[i] = { fen: branch[i].fen, status: 'error' }
           record('error')
+          commit()
+          return undefined
         }
-        setGrades(working.slice())
-        latest.current = working
       }
-    }, BRANCH_GRADE_DEBOUNCE_MS)
+
+      const newest = branch.length - 1
+      for (let i = 0; i < branch.length; i++) {
+        verdicts[i] = working[i].status === 'done'
+          ? Promise.resolve(working[i].review)
+          : gradePly(i, i === newest ? PRIORITY.gradeNow : PRIORITY.gradeBackfill)
+      }
+    })
 
     return () => {
       cancelled = true
       ctrl.abort()
-      clearTimeout(timer)
     }
     // branchKey captures branch identity; seedEval/ratings/engine settings
-    // re-grade when they change.
+    // re-grade when they change (cheap now: a re-ask rejoins any running search).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     enabled, branchKey, seedEval, whiteElo, blackElo, depth, multipv,

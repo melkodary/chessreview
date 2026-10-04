@@ -8,7 +8,9 @@ vi.mock('../config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../config')>()),
   GRADE_WITH_FRONTEND_ENGINE: false,
 }))
-vi.mock('../engine/ensureEval', () => ({ ensureEval: vi.fn() }))
+vi.mock('../engine/ensureEval', async (orig) => ({
+  ...(await orig<typeof import('../engine/ensureEval')>()), ensureEval: vi.fn(),
+}))
 vi.mock('../api/analyzer', () => ({ gradeMove: vi.fn() }))
 
 import { useBranchReview } from './useBranchReview'

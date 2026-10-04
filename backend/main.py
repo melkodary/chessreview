@@ -199,6 +199,14 @@ def create_review(request: CreateReviewRequest, raw: Request):
     return {"id": job.id, "status": job.status, "engine": job.engine}
 
 
+def _seed_eval(request: MoveReviewRequest) -> float | None:
+    """`prev_before` as the pawns seed both feeders take: `_cp_white` is the
+    whole-game review's own conversion (mate -> +-10000), so it round-trips exactly."""
+    if request.prev_before is None:
+        return request.prev_before_eval
+    return review._cp_white(review._eval_to_info(request.prev_before)) / 100
+
+
 def _has_complete_eval_payload(request: MoveReviewRequest | ExplainRequest) -> bool:
     """Does the request carry enough frontend eval to grade with no backend
     engine? Needs >= 2 before-lines (so `after_second` exists) AND either an
@@ -232,7 +240,7 @@ def grade_move(request: MoveReviewRequest):
                 request.after_eval,
                 white_elo=request.white_elo,
                 black_elo=request.black_elo,
-                prev_before_eval=request.prev_before_eval,
+                prev_before_eval=_seed_eval(request),
             )
         else:
             mv = review.review_move(
@@ -242,7 +250,7 @@ def grade_move(request: MoveReviewRequest):
                 multipv=request.multipv,
                 white_elo=request.white_elo,
                 black_elo=request.black_elo,
-                prev_before_eval=request.prev_before_eval,
+                prev_before_eval=_seed_eval(request),
             )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

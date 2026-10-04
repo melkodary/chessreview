@@ -8,9 +8,12 @@ import { gradeMove } from '../api/analyzer'
 import { ensureEval } from '../engine/ensureEval'
 import type { CachedPosition } from '../engine/evalCache'
 import { gradeTrace } from '../engine/gradeTrace'
+import { PRIORITY } from '../engine/ensureEval'
 
 vi.mock('../api/analyzer', () => ({ gradeMove: vi.fn() }))
-vi.mock('../engine/ensureEval', () => ({ ensureEval: vi.fn() }))
+vi.mock('../engine/ensureEval', async (orig) => ({
+  ...(await orig<typeof import('../engine/ensureEval')>()), ensureEval: vi.fn(),
+}))
 const mockGrade = vi.mocked(gradeMove)
 const mockEnsure = vi.mocked(ensureEval)
 
@@ -193,5 +196,38 @@ describe('useBranchReview', () => {
     // Engine unavailable → backend searched; the restart names its cause.
     expect(mine[1]).toMatchObject({ causes: ['branch'], backend: { path: 'search' }, classification: 'good' })
     expect(mine[2].causes).toEqual([])
+  })
+
+  // ── Newest first: plies are independent given evals ──
+
+  it("grades the newest ply without waiting on an earlier verdict, seeded from the browser's eval", async () => {
+    const [e4, e5] = node('e4', 'e5')
+    const evalOf: Record<string, number> = { [START]: 0.3, [e4.fen]: 0.25, [e5.fen]: 0.2 }
+    mockEnsure.mockImplementation((fen) => Promise.resolve(cached([evalOf[fen], -1])))
+    mockGrade
+      .mockImplementationOnce(() => new Promise<MoveReview>(() => {})) // ply 0 never answers
+      .mockResolvedValue(review({ classification: 'good' }))
+    const { result } = renderHook(() => useBranchReview({ ...base, branch: [e4, e5] }))
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+
+    expect(result.current.map((g) => g.status)).toEqual(['pending', 'done'])
+    const ply1 = mockGrade.mock.calls.find((c) => c[0].uci === 'e7e5')![0]
+    // The seed is the rank-1 score of the position before ply 0 (the fork), as a score.
+    expect(ply1).toMatchObject({ prevBefore: { cp: 30 }, afterEval: { cp: 20 } })
+    expect(ply1.prevBeforeEval).toBeUndefined()
+  })
+
+  it("asks for the newest ply's positions at grade-now priority, older plies at backfill", async () => {
+    mockEnsure.mockResolvedValue(cached([0.1, 0.2]))
+    mockGrade.mockResolvedValue(review({}))
+    const [e4, e5] = node('e4', 'e5')
+    renderHook(() => useBranchReview({ ...base, branch: [e4, e5] }))
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+
+    const asked = mockEnsure.mock.calls.map((c) => [c[0], c[4]?.priority])
+    expect(asked).toContainEqual([e5.fen, PRIORITY.gradeNow]) // newest ply's after
+    expect(asked).toContainEqual([e4.fen, PRIORITY.gradeNow]) // newest ply's before
+    expect(asked).toContainEqual([e4.fen, PRIORITY.gradeBackfill]) // ply 0's after
+    expect(asked).toContainEqual([START, PRIORITY.gradeBackfill]) // ply 0's before
   })
 })

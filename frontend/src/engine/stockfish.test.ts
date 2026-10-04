@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AnalysisLine } from '../api/analyzer'
-import { ANALYSIS_DEPTH_CEILING, ENGINE_THREADS_CAP } from '../config'
+import { ANALYSIS_DEPTH_CEILING, ENGINE_STOP_GRACE_MS, ENGINE_THREADS_CAP } from '../config'
 import type { SearchLimit } from './stockfish'
 
 // Minimal Worker mock: captures posted commands, lets the test drive the UCI
@@ -256,6 +256,71 @@ describe('per-search threads', () => {
     await p
     expect(workerInstances[0].posted.filter((c) => c.startsWith('setoption name Threads')))
       .toEqual(['setoption name Threads value 1'])
+  })
+})
+
+describe('supersede, idle and stop grace', () => {
+  const FEN1 = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+  const FEN2 = 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1'
+  async function booted() {
+    const { engine } = await import('./stockfish')
+    const first = engine.analyze(FEN1, { kind: 'depth', depth: 18 }, 2, () => {}, undefined, vi.fn())
+    const worker = workerInstances[0]
+    completeHandshake(worker)
+    await first
+    worker.emit('readyok') // fen1's go
+    return { engine, worker }
+  }
+
+  it("tells a replaced search's owner, but not an owner that aborted it", async () => {
+    const { engine } = await import('./stockfish')
+    const replaced = vi.fn()
+    const p = engine.analyze('a', { kind: 'depth', depth: 18 }, 2, () => {}, undefined, replaced)
+    completeHandshake(workerInstances[0])
+    await p
+    await engine.analyze('b', { kind: 'movetime', ms: 1000 }, 3, () => {})
+    expect(replaced).toHaveBeenCalledOnce()
+
+    const ctrl = new AbortController()
+    const aborted = vi.fn()
+    await engine.analyze('c', { kind: 'depth', depth: 18 }, 2, () => {}, ctrl.signal, aborted)
+    ctrl.abort()
+    expect(aborted).not.toHaveBeenCalled()
+  })
+
+  it('announces idle when a search finishes with nothing waiting', async () => {
+    const { engine, worker } = await booted()
+    const idle = vi.fn()
+    engine.onIdle(idle)
+    worker.emit('info depth 18 multipv 1 score cp 10 pv e2e4')
+    worker.emit('bestmove e2e4')
+    expect(idle).toHaveBeenCalledOnce()
+  })
+
+  it('replaces a worker that ignores stop and re-issues the waiting search', async () => {
+    vi.useFakeTimers()
+    const { engine, worker } = await booted()
+    const onLines = vi.fn()
+    await engine.analyze(FEN2, { kind: 'depth', depth: 18 }, 2, onLines) // stops fen1
+    await vi.advanceTimersByTimeAsync(ENGINE_STOP_GRACE_MS) // fen1's bestmove never comes
+    expect(worker.terminate).toHaveBeenCalled()
+    const fresh = workerInstances[1]
+    completeHandshake(fresh)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(fresh.posted).toContain(`position fen ${FEN2}`)
+    fresh.emit('readyok')
+    fresh.emit('info depth 18 multipv 1 score cp 5 pv d7d5')
+    fresh.emit('bestmove d7d5')
+    expect(onLines).toHaveBeenLastCalledWith(expect.any(Array), 18, true)
+  })
+
+  it('keeps the worker when the stopped search answers in time', async () => {
+    vi.useFakeTimers()
+    const { engine, worker } = await booted()
+    await engine.analyze(FEN2, { kind: 'depth', depth: 18 }, 2, () => {})
+    worker.emit('bestmove e2e4') // fen1's owed bestmove
+    await vi.advanceTimersByTimeAsync(ENGINE_STOP_GRACE_MS * 2)
+    expect(worker.terminate).not.toHaveBeenCalled()
   })
 })
 

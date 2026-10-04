@@ -98,7 +98,9 @@ export function useReviewOverlay(
   const branchKey = branchGrades[0]?.fen ?? ''
   const [freeze, setFreeze] = useState<Freeze>({ exploring, branchKey, held: null })
   let held = freeze.held
-  if ((freeze.exploring && !exploring) || freeze.branchKey !== branchKey) held = null
+  // '' → key is the first grades of a new deviation, still showing the fork: hold it.
+  const replaced = freeze.branchKey !== branchKey && freeze.branchKey !== ''
+  if ((freeze.exploring && !exploring) || replaced) held = null
   if (rawBar && !eqBar(rawBar, held)) held = rawBar
   if (freeze.exploring !== exploring || freeze.branchKey !== branchKey || !eqBar(held, freeze.held)) {
     setFreeze({ exploring, branchKey, held })

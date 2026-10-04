@@ -1,6 +1,7 @@
 import type { AnalysisLine } from '../api/analyzer'
 import {
-  ANALYSIS_DEPTH_CEILING, ENGINE_BOOT_TIMEOUT_MS, ENGINE_PV_DEPTH, GRADE_ENGINE_THREADS,
+  ANALYSIS_DEPTH_CEILING, ENGINE_BOOT_TIMEOUT_MS, ENGINE_PV_DEPTH, ENGINE_STOP_GRACE_MS,
+  GRADE_ENGINE_THREADS,
 } from '../config'
 import { ENGINE_URL, SETTINGS_STORAGE } from '../storage'
 import { parseInfo } from './uci'
@@ -32,6 +33,8 @@ interface Search {
   limit: SearchLimit
   multipv: number
   onLines: OnLines
+  signal?: AbortSignal
+  onSuperseded?: () => void
   slots: AnalysisLine[]
   linesByRoot: Map<string, AnalysisLine>
   depth: number
@@ -69,6 +72,10 @@ class Engine {
   // answered by different threads, so a stopped search's `bestmove` can land on
   // the next search as an empty final frame.
   private staleBestmoves = 0
+  // Armed while a stopped search still owes its `bestmove`; firing means the
+  // engine ignored `stop`, so the worker is replaced (see respawn).
+  private staleTimer: ReturnType<typeof setTimeout> | null = null
+  private idleListeners = new Set<() => void>()
   private threads = SETTINGS_STORAGE.engineThreads.load()
   private hash = SETTINGS_STORAGE.engineHash.load()
   // Threads the live worker runs with; per search, since depth searches use fewer.
@@ -96,8 +103,19 @@ class Engine {
     return { url: activeEngineUrl, state: this.state }
   }
 
+  /** Subscribe to "no search running or waiting"; returns an unsubscribe fn. */
+  onIdle(cb: () => void): () => void {
+    this.idleListeners.add(cb)
+    return () => this.idleListeners.delete(cb)
+  }
+
+  private emitIdleIfFree() {
+    if (!this.current && !this.pending) this.idleListeners.forEach((f) => f())
+  }
+
   /** Tear down the live worker so the next analyze() reboots with fresh setoption values. */
-  private teardown() {
+  private teardown(announceIdle = true) {
+    const dropped = [this.current, this.pending]
     this.cancelBoot?.()
     this.cancelBoot = null
     this.worker?.terminate()
@@ -106,7 +124,36 @@ class Engine {
     this.current = null
     this.pending = null
     this.staleBestmoves = 0
+    this.clearStaleTimer()
     this.setState('idle')
+    dropped.forEach((s) => s?.onSuperseded?.())
+    if (announceIdle) this.emitIdleIfFree()
+  }
+
+  /** A stopped search owes one `bestmove`; give it ENGINE_STOP_GRACE_MS to pay. */
+  private owe() {
+    this.staleBestmoves++
+    this.staleTimer ??= setTimeout(() => this.respawn(), ENGINE_STOP_GRACE_MS)
+  }
+
+  private clearStaleTimer() {
+    if (this.staleTimer !== null) clearTimeout(this.staleTimer)
+    this.staleTimer = null
+  }
+
+  // The engine ignored `stop` (once for 80s+) and Stockfish starts no `go` until the
+  // old search ends: replace the worker and re-issue the waiting search, so its
+  // caller sees a delay, not a hang.
+  private respawn() {
+    const resume = this.pending ?? this.current
+    this.pending = null
+    this.current = null
+    // Idle would let another consumer dispatch ahead of the search being resumed.
+    const live = resume && !resume.signal?.aborted ? resume : null
+    this.teardown(!live)
+    if (!live) return
+    void this.analyze(live.fen, live.limit, live.multipv, live.onLines, live.signal, live.onSuperseded)
+      .catch(() => live.onSuperseded?.())
   }
 
   /**
@@ -214,11 +261,16 @@ class Engine {
     if (line.startsWith('bestmove')) {
       if (this.staleBestmoves > 0) {
         this.staleBestmoves--
+        // Progress: the engine is answering stops, so restart the grace window.
+        this.clearStaleTimer()
+        if (this.staleBestmoves > 0) this.staleTimer = setTimeout(() => this.respawn(), ENGINE_STOP_GRACE_MS)
         return
       }
       if (!this.current) return
-      this.emit(this.current, true)
+      const done = this.current
       this.current = null
+      this.emit(done, true)
+      this.emitIdleIfFree()
       return
     }
 
@@ -260,20 +312,24 @@ class Engine {
     multipv: number,
     onLines: OnLines,
     signal?: AbortSignal,
+    // The engine dropped it without `signal` asking: replaced, stop(), or teardown.
+    onSuperseded?: () => void,
   ): Promise<void> {
     await this.boot()
     if (signal?.aborted) return
 
     const id = ++this.reqId
     const search: Search = {
-      id, fen, limit, multipv, onLines, slots: [], linesByRoot: new Map(), depth: 0,
+      id, fen, limit, multipv, onLines, signal, onSuperseded,
+      slots: [], linesByRoot: new Map(), depth: 0,
     }
 
     // Cancel any in-flight search; clear current so its trailing frames drop.
     // Only a search whose `go` was sent still owes a `bestmove`; a `pending` one
     // never started.
+    const dropped = [this.current, this.pending]
     this.send('stop')
-    if (this.current) this.staleBestmoves++
+    if (this.current) this.owe()
     this.current = null
     this.pending = search
     // Stockfish waits out the stopped search before resizing; resizing clears the hash.
@@ -285,23 +341,28 @@ class Engine {
     this.send(`setoption name MultiPV value ${multipv}`)
     this.send(`position fen ${fen}`)
     this.send('isready') // barrier — go is sent on readyok
+    dropped.forEach((s) => s?.onSuperseded?.())
 
     signal?.addEventListener('abort', () => {
       if (this.pending?.id === id) this.pending = null
       if (this.current?.id === id) {
         this.send('stop')
-        this.staleBestmoves++
+        this.owe()
         this.current = null
       }
+      this.emitIdleIfFree()
     })
   }
 
   /** Stop the current search without tearing down the worker. */
   stop() {
+    const dropped = [this.current, this.pending]
     if (this.worker) this.send('stop')
-    if (this.current) this.staleBestmoves++
+    if (this.current) this.owe()
     this.pending = null
     this.current = null
+    dropped.forEach((s) => s?.onSuperseded?.())
+    this.emitIdleIfFree()
   }
 }
 
