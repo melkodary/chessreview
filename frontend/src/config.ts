@@ -37,6 +37,10 @@ export const ENGINE_BOOT_TIMEOUT_MS = num(import.meta.env.VITE_ENGINE_BOOT_TIMEO
 // A depth-limited WASM search that has not reached its depth by now is given up
 // (→ backend fallback): the 19 lite build can stall short of depth with a warm hash.
 export const ENGINE_DEPTH_TIMEOUT_MS = num(import.meta.env.VITE_ENGINE_DEPTH_TIMEOUT_MS, 30_000)
+// Threads for depth-limited searches (grading, sweeps), capped by the user's setting.
+// Fewer WASM threads reach a fixed depth sooner: 1 thread median 1.1s / max 4.0s,
+// 8 threads 2.6s / 30s+ (spec 2026-10-04-fast-deviation-grading).
+export const GRADE_ENGINE_THREADS = num(import.meta.env.VITE_GRADE_ENGINE_THREADS, 1)
 
 // Analysis searches on a wall-clock budget, not a depth target — depth is an
 // output (the badge), never an input. Steps in seconds; the setting persists ms.

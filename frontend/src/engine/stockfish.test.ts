@@ -228,6 +228,37 @@ describe('search limit dispatch', () => {
   })
 })
 
+describe('per-search threads', () => {
+  it('runs depth searches at GRADE_ENGINE_THREADS and restores the user setting for movetime', async () => {
+    const { engine } = await import('./stockfish')
+    engine.configure({ threads: 4, hash: 64 })
+    const first = engine.analyze('startpos', { kind: 'depth', depth: 18 }, 2, () => {})
+    const worker = workerInstances[0]
+    completeHandshake(worker)
+    await first
+    const threadsSet = () => worker.posted.filter((c) => c.startsWith('setoption name Threads'))
+    // Boot applies the user's 4, then the depth search drops to the grade setting.
+    expect(threadsSet()).toEqual(['setoption name Threads value 4', 'setoption name Threads value 1'])
+    expect(worker.posted.indexOf('setoption name Threads value 1'))
+      .toBeLessThan(worker.posted.lastIndexOf('isready'))
+
+    await engine.analyze('startpos', { kind: 'depth', depth: 18 }, 2, () => {})
+    expect(threadsSet()).toHaveLength(2) // already at 1: no resize, the hash survives
+    await engine.analyze('startpos', { kind: 'movetime', ms: 5000 }, 3, () => {})
+    expect(threadsSet().at(-1)).toBe('setoption name Threads value 4')
+  })
+
+  it('never exceeds a user setting below the grade default', async () => {
+    const { engine } = await import('./stockfish')
+    engine.configure({ threads: 1, hash: 64 })
+    const p = engine.analyze('startpos', { kind: 'depth', depth: 18 }, 2, () => {})
+    completeHandshake(workerInstances[0])
+    await p
+    expect(workerInstances[0].posted.filter((c) => c.startsWith('setoption name Threads')))
+      .toEqual(['setoption name Threads value 1'])
+  })
+})
+
 describe('multipv streaming', () => {
   // White to move, from the game that surfaced the bug (17...Rb8).
   const FEN = '1rb2rk1/p4ppp/2Q1p3/3pP3/4nP2/2P5/PP2BqPP/R2K3R w - - 1 18'

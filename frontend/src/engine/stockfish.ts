@@ -1,5 +1,7 @@
 import type { AnalysisLine } from '../api/analyzer'
-import { ANALYSIS_DEPTH_CEILING, ENGINE_BOOT_TIMEOUT_MS, ENGINE_PV_DEPTH } from '../config'
+import {
+  ANALYSIS_DEPTH_CEILING, ENGINE_BOOT_TIMEOUT_MS, ENGINE_PV_DEPTH, GRADE_ENGINE_THREADS,
+} from '../config'
 import { ENGINE_URL, SETTINGS_STORAGE } from '../storage'
 import { parseInfo } from './uci'
 
@@ -69,6 +71,8 @@ class Engine {
   private staleBestmoves = 0
   private threads = SETTINGS_STORAGE.engineThreads.load()
   private hash = SETTINGS_STORAGE.engineHash.load()
+  // Threads the live worker runs with; per search, since depth searches use fewer.
+  private appliedThreads = 0
   private state: EngineRunState = 'idle'
   private listeners = new Set<() => void>()
 
@@ -170,6 +174,7 @@ class Engine {
         const line = typeof e.data === 'string' ? e.data : ''
         if (line.includes('uciok')) {
           this.send(`setoption name Threads value ${this.threads}`)
+          this.appliedThreads = this.threads
           this.send(`setoption name Hash value ${this.hash}`)
           this.send('isready')
         } else if (line.includes('readyok')) {
@@ -271,6 +276,12 @@ class Engine {
     if (this.current) this.staleBestmoves++
     this.current = null
     this.pending = search
+    // Stockfish waits out the stopped search before resizing; resizing clears the hash.
+    const threads = limit.kind === 'depth' ? Math.min(GRADE_ENGINE_THREADS, this.threads) : this.threads
+    if (threads !== this.appliedThreads) {
+      this.send(`setoption name Threads value ${threads}`)
+      this.appliedThreads = threads
+    }
     this.send(`setoption name MultiPV value ${multipv}`)
     this.send(`position fen ${fen}`)
     this.send('isready') // barrier — go is sent on readyok
