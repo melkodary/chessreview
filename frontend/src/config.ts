@@ -69,6 +69,11 @@ export const ANALYSIS_THROTTLE_MS      = num(import.meta.env.VITE_ANALYSIS_THROT
 // searches (guaranteed parity). Doubles as a live parity switch. No Settings UI
 // this phase — a plain env default (see the phase-2 deviation-grading spec).
 export const GRADE_WITH_FRONTEND_ENGINE = bool(import.meta.env.VITE_GRADE_WITH_FRONTEND_ENGINE, true)
+// Pre-search where the user is parked on Review: the position and its top moves'
+// after-positions. Off until the grade trace's hit rate says it pays (spec 2026-10-04 §5).
+export const SPECULATE = bool(import.meta.env.VITE_SPECULATE, false)
+export const SPECULATE_DELAY_MS = num(import.meta.env.VITE_SPECULATE_DELAY_MS, 600)
+export const SPECULATE_MOVES = num(import.meta.env.VITE_SPECULATE_MOVES, 2)
 
 // Provisional in-browser eval curve (engine/sweepGame.ts): shallow, rank-1-only
 // so a laptop sweep lands inside the review wait (lab 101 — MultiPV 1 is 3.3x

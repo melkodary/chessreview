@@ -231,4 +231,19 @@ describe('ensureEval', () => {
     calls[1].onLines([line(0, ['e2e4']), line(0, ['d2d4'])], 18, true)
     expect((await queued)?.depth).toBe(18)
   })
+
+  it('marks evals a speculative search produced, cached or joined', async () => {
+    manualEngine()
+    void ensureEval('s', 18, 2, fresh(), { priority: PRIORITY.speculate })
+    await flush()
+    const joined: EvalOutcome[] = []
+    const r = ensureEval('s', 18, 2, fresh(), { priority: PRIORITY.gradeNow, onOutcome: (o) => joined.push(o) })
+    calls[0].onLines([line(0, ['e2e4']), line(0, ['d2d4'])], 18, true)
+    await r
+    expect(joined[0]).toMatchObject({ source: 'search', shared: true, speculated: true })
+    const later: EvalOutcome[] = []
+    await ensureEval('s', 18, 2, fresh(), { onOutcome: (o) => later.push(o) })
+    expect(later[0]).toMatchObject({ source: 'cache', speculated: true })
+  })
 })
+

@@ -16,6 +16,7 @@ export interface EvalOutcome {
   // Waited for a worker before its search started; joined a search already queued or running.
   queuedMs?: number
   shared?: boolean
+  speculated?: boolean // the eval came from (or joined) a speculative search
 }
 
 // Lower runs first. The grader asks for the newest ply's positions at gradeNow and
@@ -41,6 +42,7 @@ interface Job {
   seq: number
   ctrl: AbortController | null // set while running
   worker: Engine | null
+  speculative: boolean
   startedAt: number
   firstFrameAt?: number
   reached: number
@@ -56,6 +58,7 @@ const pool: Engine[] = []
 let poolSize: number | null = null
 let seq = 0
 let pumpQueued = false
+const speculated = new Set<string>() // fens whose eval a speculative search produced
 
 const prio = (j: Job) => Math.min(...[...j.subs].map((s) => s.priority))
 
@@ -85,7 +88,7 @@ function settle(job: Job, sub: Sub, v: CachedPosition | null, result: EvalOutcom
   const started = job.ctrl || job.firstFrameAt != null ? job.startedAt : undefined
   sub.onOutcome?.({
     source: 'search', result, ms: now - sub.requestedAt, depth: job.reached,
-    engineState: sub.engineState, shared: sub.shared,
+    engineState: sub.engineState, shared: sub.shared, speculated: job.speculative,
     firstFrameMs: job.firstFrameAt != null ? Math.max(0, job.firstFrameAt - sub.requestedAt) : undefined,
     queuedMs: started != null ? Math.max(0, started - sub.requestedAt) : undefined,
   })
@@ -157,6 +160,7 @@ function start(job: Job, worker: Engine) {
       job.firstFrameAt ??= performance.now()
       job.reached = Math.max(job.reached, d)
       putEval(job.fen, lines, d, job.multipv)
+      if (job.speculative) speculated.add(job.fen)
       for (const s of job.subs) {
         if (d >= s.depth) settle(job, s, { lines, depth: d, multipv: job.multipv }, 'ok')
       }
@@ -194,7 +198,9 @@ export function ensureEval(
   const engineState = poolState()
   const hit = getEval(fen, multipv, depth)
   if (hit) {
-    opts.onOutcome?.({ source: 'cache', result: 'ok', ms: 0, depth: hit.depth, engineState })
+    opts.onOutcome?.({
+      source: 'cache', result: 'ok', ms: 0, depth: hit.depth, engineState, speculated: speculated.has(fen),
+    })
     return Promise.resolve(hit)
   }
   if (signal.aborted) return Promise.resolve(null)
@@ -203,7 +209,10 @@ export function ensureEval(
     let job = [...jobs].find((j) => j.fen === fen && j.depth >= depth && j.multipv >= multipv)
     const shared = job != null
     if (!job) {
-      job = { fen, depth, multipv, subs: new Set(), seq: seq++, ctrl: null, worker: null, startedAt: 0, reached: 0 }
+      job = {
+        fen, depth, multipv, subs: new Set(), seq: seq++, ctrl: null, worker: null, startedAt: 0, reached: 0,
+        speculative: opts.priority === PRIORITY.speculate,
+      }
       jobs.add(job)
     }
     const owner = job
@@ -229,5 +238,6 @@ export function resetEvalScheduler(workers?: number): void {
   running.clear()
   pool.length = 0
   poolSize = workers ?? null
+  speculated.clear()
   pumpQueued = false
 }

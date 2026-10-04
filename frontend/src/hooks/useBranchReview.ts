@@ -37,6 +37,11 @@ interface Params {
 // this array (useReviewOverlay's eval-bar memo among them).
 const EMPTY_GRADES: BranchGrade[] = []
 
+// Same major version either side, so a branch grade may mix nets (2026-07-16).
+export function gradesWithBrowserEvals(reviewEngine: string | null): boolean {
+  return GRADE_WITH_FRONTEND_ENGINE && (reviewEngine === REVIEW_ENGINE_NAME || reviewEngine === WASM_ENGINE_NAME)
+}
+
 // One ply's frontend-eval payload, or {} to let the backend search. A terminal
 // after-position needs no after-eval (the backend synthesizes it); `prevFen`'s
 // rank-1 score is the ply's seed.
@@ -44,9 +49,7 @@ async function frontendEvalPayload(
   predFen: string, afterFen: string, prevFen: string | null, depth: number, multipv: number,
   reviewEngine: string | null, signal: AbortSignal, trace: Partial<GradeTrace>, priority: number,
 ): Promise<{ beforeLines?: GradeLine[]; afterEval?: GradeMoveEval; prevBefore?: GradeMoveEval }> {
-  // Same major version either side, so a branch grade may mix nets (2026-07-16).
-  const sameVersion = reviewEngine === REVIEW_ENGINE_NAME || reviewEngine === WASM_ENGINE_NAME
-  if (!GRADE_WITH_FRONTEND_ENGINE || !sameVersion) {
+  if (!gradesWithBrowserEvals(reviewEngine)) {
     trace.feSkip = GRADE_WITH_FRONTEND_ENGINE ? 'engine-mismatch' : 'flag-off'
     trace.reviewEngine = reviewEngine
     return {}

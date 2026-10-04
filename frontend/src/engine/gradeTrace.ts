@@ -55,9 +55,10 @@ const s = (ms: number) => `${(ms / 1000).toFixed(1)}s`
 function formatEval(label: string, o: EvalOutcome | 'terminal' | undefined): string | null {
   if (!o) return null
   if (o === 'terminal') return `${label} terminal`
-  if (o.source === 'cache') return `${label} cache d${o.depth}`
+  const spec = o.speculated ? ' speculated' : ''
+  if (o.source === 'cache') return `${label} cache d${o.depth}${spec}`
   const first = o.firstFrameMs != null ? `, first frame ${s(o.firstFrameMs)}` : ''
-  return `${label} search ${s(o.ms)} → d${o.depth} ${o.result} (engine ${o.engineState}${first})`
+  return `${label} search ${s(o.ms)} → d${o.depth} ${o.result}${spec} (engine ${o.engineState}${first})`
 }
 
 export function formatGrade(t: GradeTrace): string {
