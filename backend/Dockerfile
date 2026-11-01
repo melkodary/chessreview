@@ -33,7 +33,7 @@ RUN case "${TARGETARCH}" in \
     && ./stockfish bench 16 1 5 > /dev/null \
     && strip stockfish
 
-FROM python:3.14-slim-trixie
+FROM python:3.15-slim-trixie
 
 COPY --from=stockfish-builder /src/stockfish/src/stockfish /usr/bin/stockfish
 COPY --from=stockfish-builder /src/stockfish/Copying.txt /usr/share/doc/stockfish/COPYING.txt
